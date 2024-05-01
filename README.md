@@ -6,7 +6,7 @@
 
 # Faster Learned Sparse Retrieval with Block-Max Pruning
 
-This repository contains the source code used for the experiments presented in the paper "Faster Learned Sparse Retrieval with Block-Max Pruning" by [Antonio Mallia, Torsten Suel and Nicola Tonellotto], published in [SIGIR, 2024]. 
+This repository contains the source code used for the experiments presented in the paper "Faster Learned Sparse Retrieval with Block-Max Pruning" by Antonio Mallia, Torsten Suel and Nicola Tonellotto, published at SIGIR, 2024. 
 
 
 
