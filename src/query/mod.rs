@@ -1,4 +1,3 @@
-pub mod algorithm;
 pub mod cursor;
 pub mod live_block;
 pub mod topk_heap;

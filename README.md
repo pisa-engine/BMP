@@ -19,20 +19,51 @@ Please cite the following paper if you use this code, or a modified version of i
 }
 ```
 
-# Usage
+### Usage
 
-## Data
+#### Data
 The CIFF files and the queries required by BMP to generate an index and perform search operations can be found in the so called [CIFF-Hub](https://github.com/pisa-engine/ciff-hub/tree/main).
 
-## Index
+#### Index
 ```
 ./target/release/ciff2bmp -b 8 -c ./bp-msmarco-passage-unicoil-quantized.ciff -o bp-msmarco-passage-unicoil-quantized.bmp --compress-range
 ```
-## Search
+#### Search
 ```
 ./target/release/search --bsize 8 --index bp-msmarco-passage-unicoil-quantized.bmp --k 1000 --queries dev.pisa > bp-msmarco-passage-unicoil-quantized.dev.trec
 ```
-## Evaluate
+#### Evaluate
 ```
 trec_eval -M 10 -m recip_rank qrels.msmarco-passage.dev-subset.txt bp-msmarco-passage-unicoil-quantized.dev.trec
+```
+
+## Python Bindings
+
+<p align="center">
+    <img width="100px" src="./img/logo.jpg" />
+    <img width="100px" src="./img/plus.png" />
+    <img width="100px" src="./img/python.png" />
+    <h1 align="center">BMPy</h1>
+</p>
+
+### Install
+```
+pip install maturin
+maturin build -r
+pip install target/wheels/*.whl
+```
+
+### Usage
+#### Index
+```python
+from bmpy import ciff2bmp
+
+ciff2bmp(ciff_file="/path/to/ciff", output="/path/to/index", bsize=32, compress_range=False)
+```
+#### Search
+
+```python
+from bmpy import search
+
+results = search(index="/path/to/index", queries="/path/to/queries", k=10, bsize=32, alpha=1.0, beta=1.0)
 ```
