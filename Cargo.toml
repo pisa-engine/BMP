@@ -1,0 +1,27 @@
+[package]
+name = "bmp"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "ciff2bmp"
+path = "bin/ciff2bmp.rs"
+
+[[bin]]
+name = "search"
+path = "bin/search.rs"
+
+[dependencies]
+protobuf = "^2.27"
+structopt = "0.3"
+anyhow = "1.0"
+indicatif = "0.15"
+num-traits = "0"
+bincode = "1.3.3"
+serde = { version = "1.0.193", features = ["derive"] }
+fst = "0.4.7"
+num-integer = "0.1.45"
+rayon = "1.8.0"
+
+[build-dependencies]
+protobuf-codegen-pure = "2.22"
