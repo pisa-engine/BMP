@@ -24,6 +24,8 @@ Please cite the following paper if you use this code, or a modified version of i
 #### Data
 The CIFF files and the queries required by BMP to generate an index and perform search operations can be found in the so called [CIFF-Hub](https://github.com/pisa-engine/ciff-hub/tree/main).
 
+**One requirement for BMP to work correctly is that the impact scores of the CIFF files have to be quantized to 8 bits. This is not always done and for this reason is highly recommended to use the CIFF files from the Hub**
+
 #### Index
 ```
 ./target/release/ciff2bmp -b 8 -c ./bp-msmarco-passage-unicoil-quantized.ciff -o bp-msmarco-passage-unicoil-quantized.bmp --compress-range
