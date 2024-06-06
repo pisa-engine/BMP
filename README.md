@@ -49,6 +49,9 @@ trec_eval -M 10 -m recip_rank qrels.msmarco-passage.dev-subset.txt bp-msmarco-pa
 </p>
 
 ### Install
+
+From the 'python' directory (i.e, `cd python`):
+
 ```
 pip install maturin
 maturin build -r
