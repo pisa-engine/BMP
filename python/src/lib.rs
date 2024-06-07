@@ -39,21 +39,20 @@ impl Searcher {
 
     fn search(
         &self,
-        mut query: HashMap<String, u32>,
+        query: HashMap<String, f32>,
         k: usize,
         bsize: usize,
         alpha: f32,
         beta: f32,
     ) -> PyResult<(Vec<String>, Vec<f32>)> {
-        let max_tok_weight = query.iter().map(|p| *p.1).max().unwrap();
-        // let mut quant_query = HashMap<String, f32>;
-        if max_tok_weight > MAX_TERM_WEIGHT as u32 {
-            let scale: f32 = MAX_TERM_WEIGHT as f32 / max_tok_weight as f32;
-            for value in query.values_mut() {
-                *value = (*value as f32 * scale).ceil() as u32;
-            }
+        let max_tok_weight = query.iter().map(|p| *p.1).filter(|&value| !value.is_nan()).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+        let mut quant_query: HashMap<String, u32> = HashMap::new();
+        
+        let scale: f32 = MAX_TERM_WEIGHT as f32 / max_tok_weight;
+        for (key, value) in &query {
+            quant_query.insert(key.clone(), (value * scale).ceil() as u32);
         }
-        let cursors: Vec<PostingListIterator> = query
+        let cursors: Vec<PostingListIterator> = quant_query
             .iter()
             .flat_map(|(token, freq)| self.index.get_cursor(token, *freq))
             .collect();

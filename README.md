@@ -65,7 +65,14 @@ ciff2bmp(ciff_file="/path/to/ciff", output="/path/to/index", bsize=32, compress_
 #### Search
 
 ```python
-from bmpy import search
+from bmpy import search, Searcher
 
+# batch operation
 results = search(index="/path/to/index", queries="/path/to/queries", k=10, bsize=32, alpha=1.0, beta=1.0)
+# -> str (TREC run file)
+
+# query-by-query operation
+searcher = Searcher("/path/to/index") # loads index into memory once
+searcher.search({'tok1': 5.3, 'tok2': 1.1}, k=10, bsize=32, alpha=1.0, beta=1.0)
+# -> Tuple[List[str], List[float]] (doc IDs, scores) for this query
 ```
