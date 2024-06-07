@@ -10,15 +10,32 @@ use std::arch::x86_64::_mm_prefetch;
 use std::time::Instant;
 
 pub fn b_search(
-    mut queries: Vec<Vec<PostingListIterator>>,
+    queries: Vec<Vec<PostingListIterator>>,
     forward_index: &BlockForwardIndex,
     k: usize,
     bsize: usize,
     alpha: f32,
     terms_r: f32,
 ) -> Vec<TopKHeap<u16>> {
+    b_search_verbose(queries, forward_index, k, bsize, alpha, terms_r, true)
+}
+
+pub fn b_search_verbose(
+    mut queries: Vec<Vec<PostingListIterator>>,
+    forward_index: &BlockForwardIndex,
+    k: usize,
+    bsize: usize,
+    alpha: f32,
+    terms_r: f32,
+    verbose: bool,
+) -> Vec<TopKHeap<u16>> {
     let mut results: Vec<TopKHeap<u16>> = Vec::new();
-    let progress = progress_bar("Forward index-based search", queries.len());
+
+    let progress = if verbose {
+        Some(progress_bar("Forward index-based search", queries.len()))
+    } else {
+        None
+    };
 
     let mut search_elapsed = 0;
     let mut buckets: Vec<Vec<u32>> = (0..=2usize.pow(16)).map(|_| Vec::new()).collect();
@@ -120,14 +137,20 @@ pub fn b_search(
         }
         search_elapsed += start_search.elapsed().as_micros();
         results.push(topk.clone());
-        progress.inc(1);
+        if let Some(progress_bar) = &progress {
+            progress_bar.inc(1);
+        }
     }
-    progress.finish();
+    if let Some(progress_bar) = &progress {
+        progress_bar.finish();
+    }
 
-    eprintln!(
-        "search_elapsed = {}",
-        search_elapsed / results.len() as u128
-    );
+    if verbose {
+        eprintln!(
+            "search_elapsed = {}",
+            search_elapsed / results.len() as u128
+        );
+    }
 
     results
 }
