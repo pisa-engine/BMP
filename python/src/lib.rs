@@ -41,7 +41,6 @@ impl Searcher {
         &self,
         query: HashMap<String, f32>,
         k: usize,
-        bsize: usize,
         alpha: f32,
         beta: f32,
     ) -> PyResult<(Vec<String>, Vec<f32>)> {
@@ -57,7 +56,7 @@ impl Searcher {
             .flat_map(|(token, freq)| self.index.get_cursor(token, *freq))
             .collect();
         let wrapped_cursors = vec![cursors; 1];
-        let mut results = b_search_verbose(wrapped_cursors, &self.bfwd, k, bsize, alpha, beta, false);
+        let mut results = b_search_verbose(wrapped_cursors, &self.bfwd, k, alpha, beta, false);
         let doc_lexicon = self.index.documents();
         let mut docnos: Vec<String> = Vec::new();
         let mut scores: Vec<f32> = Vec::new();
@@ -74,7 +73,6 @@ fn search(
     index: PathBuf,
     queries: PathBuf,
     k: usize,
-    bsize: usize,
     alpha: f32,
     beta: f32,
 ) -> PyResult<String> {
@@ -86,7 +84,7 @@ fn search(
     let (q_ids, cursors) = cursors_from_queries(queries, &index);
 
     eprintln!("Performing query processing");
-    let results = b_search_verbose(cursors, &bfwd, k, bsize, alpha, beta, true);
+    let results = b_search_verbose(cursors, &bfwd, k, alpha, beta, true);
 
     eprintln!("Exporting TREC run");
     // 4. Log results into TREC format

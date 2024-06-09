@@ -18,8 +18,6 @@ struct Args {
     queries: PathBuf,
     #[structopt(short, long, help = "Number of documents to retrieve")]
     k: usize,
-    #[structopt(short, long, help = "Block size")]
-    bsize: usize,
     #[structopt(short, long, help = "approximation factor", default_value = "1.0")]
     alpha: f32,
     #[structopt(
@@ -42,7 +40,7 @@ fn main() -> Result<()> {
     let (q_ids, cursors) = cursors_from_queries(args.queries, &index);
 
     eprintln!("Performing query processing");
-    let results = b_search(cursors, &bfwd, args.k, args.bsize, args.alpha, args.beta);
+    let results = b_search(cursors, &bfwd, args.k, args.alpha, args.beta);
 
     eprintln!("Exporting TREC run");
     // 4. Log results into TREC format

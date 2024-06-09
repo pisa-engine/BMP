@@ -32,7 +32,7 @@ The CIFF files and the queries required by BMP to generate an index and perform 
 ```
 #### Search
 ```
-./target/release/search --bsize 8 --index bp-msmarco-passage-unicoil-quantized.bmp --k 1000 --queries dev.pisa > bp-msmarco-passage-unicoil-quantized.dev.trec
+./target/release/search --index bp-msmarco-passage-unicoil-quantized.bmp --k 1000 --queries dev.pisa > bp-msmarco-passage-unicoil-quantized.dev.trec
 ```
 #### Evaluate
 ```
@@ -71,11 +71,11 @@ ciff2bmp(ciff_file="/path/to/ciff", output="/path/to/index", bsize=32, compress_
 from bmpy import search, Searcher
 
 # batch operation
-results = search(index="/path/to/index", queries="/path/to/queries", k=10, bsize=32, alpha=1.0, beta=1.0)
+results = search(index="/path/to/index", queries="/path/to/queries", k=10, alpha=1.0, beta=1.0)
 # -> str (TREC run file)
 
 # query-by-query operation
 searcher = Searcher("/path/to/index") # loads index into memory once
-searcher.search({'tok1': 5.3, 'tok2': 1.1}, k=10, bsize=32, alpha=1.0, beta=1.0)
+searcher.search({'tok1': 5.3, 'tok2': 1.1}, k=10, alpha=1.0, beta=1.0)
 # -> Tuple[List[str], List[float]] (doc IDs, scores) for this query
 ```

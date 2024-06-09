@@ -13,18 +13,16 @@ pub fn b_search(
     queries: Vec<Vec<PostingListIterator>>,
     forward_index: &BlockForwardIndex,
     k: usize,
-    bsize: usize,
     alpha: f32,
     terms_r: f32,
 ) -> Vec<TopKHeap<u16>> {
-    b_search_verbose(queries, forward_index, k, bsize, alpha, terms_r, true)
+    b_search_verbose(queries, forward_index, k, alpha, terms_r, true)
 }
 
 pub fn b_search_verbose(
     mut queries: Vec<Vec<PostingListIterator>>,
     forward_index: &BlockForwardIndex,
     k: usize,
-    bsize: usize,
     alpha: f32,
     terms_r: f32,
     verbose: bool,
@@ -117,12 +115,12 @@ pub fn b_search_verbose(
                 );
             }
 
-            let offset = *current_block as usize * bsize;
+            let offset = *current_block as usize * forward_index.block_size;
 
             let res = block_score(
                 &query_vec,
                 &forward_index.data[*current_block as usize],
-                bsize,
+                forward_index.block_size,
             );
 
             for (doc_id, &score) in res.iter().enumerate() {
