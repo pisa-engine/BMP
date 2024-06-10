@@ -45,12 +45,18 @@ trec_eval -M 10 -m recip_rank qrels.msmarco-passage.dev-subset.txt bp-msmarco-pa
     <img width="100px" src="./img/logo.jpg" />
     <img width="100px" src="./img/plus.png" />
     <img width="100px" src="./img/python.png" />
-    <h1 align="center">BMPy</h1>
+    <h1 align="center">BMP</h1>
 </p>
 
 ### Install
 
-From the 'python' directory (i.e, `cd python`):
+Form PyPi:
+
+```
+pip intall bmp
+```
+
+From source (in the 'python' directory, i.e `cd python`):
 
 ```
 pip install maturin
@@ -61,14 +67,14 @@ pip install target/wheels/*.whl
 ### Usage
 #### Index
 ```python
-from bmpy import ciff2bmp
+from bmp import ciff2bmp
 
 ciff2bmp(ciff_file="/path/to/ciff", output="/path/to/index", bsize=32, compress_range=False)
 ```
 #### Search
 
 ```python
-from bmpy import search, Searcher
+from bmp import search, Searcher
 
 # batch operation
 results = search(index="/path/to/index", queries="/path/to/queries", k=10, alpha=1.0, beta=1.0)

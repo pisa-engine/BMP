@@ -95,7 +95,7 @@ fn search(
 /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
 /// import the module.
 #[pymodule]
-fn bmpy(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _bmp(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ciff2bmp, m)?)?;
     m.add_function(wrap_pyfunction!(search, m)?)?;
     m.add_class::<Searcher>()?;
