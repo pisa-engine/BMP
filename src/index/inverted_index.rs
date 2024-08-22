@@ -116,12 +116,16 @@ impl IndexBuilder {
     }
 
     pub fn build(self, compress_range: bool) -> Index {
+        let mut num_docs = self.num_documents;
+        if num_docs == 0 {
+            num_docs = self.documents.len();
+        }
         let posting_lists: Vec<PostingList> = self
             .posting_lists
             .into_par_iter()
             .map(|p_list| {
                 let range_size = self.bsize;
-                let blocks_num = div_ceil(self.num_documents, range_size);
+                let blocks_num = div_ceil(num_docs, range_size);
                 let mut range_maxes: Vec<u8> = vec![0; blocks_num];
                 p_list.iter().for_each(|&(docid, score)| {
                     let current_max = &mut range_maxes[docid as usize / range_size];
@@ -153,7 +157,7 @@ impl IndexBuilder {
         });
 
         Index {
-            num_documents: self.num_documents,
+            num_documents: num_docs,
             posting_lists,
             termmap: Map::new(build.into_inner().unwrap()).unwrap(),
             documents: self.documents,

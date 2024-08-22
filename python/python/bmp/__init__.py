@@ -1,1 +1,1 @@
-from bmp._bmp import ciff2bmp, search, Searcher
+from bmp._bmp import ciff2bmp, search, Searcher, Indexer
