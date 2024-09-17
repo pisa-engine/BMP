@@ -94,6 +94,7 @@ impl IndexBuilder {
     }
 
     pub fn push_posting(&mut self, term_id: u32, doc_id: u32, tf: u32) {
+        // Pushes the doc_id and tf to the posting assocaited with term_id. This function assumes doc_ids are added in an increasing order.
         self.posting_lists[term_id as usize].push((doc_id, tf));
     }
 
