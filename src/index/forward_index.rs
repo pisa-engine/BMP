@@ -54,6 +54,9 @@ impl ForwardIndexBuilder {
             self.forward_index.data[*doc_id as usize].push((term_id as u32, *score));
         }
     }
+    pub fn insert_document(&mut self, vector: Vec<(u32, u32)>) {
+        self.forward_index.data.push(vector);
+    }
     pub fn build(&mut self) -> ForwardIndex {
         for doc in &mut self.forward_index.data {
             doc.sort_by_key(|d| d.0);

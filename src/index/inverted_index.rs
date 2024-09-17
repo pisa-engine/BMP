@@ -93,8 +93,15 @@ impl IndexBuilder {
         self.terms.push(term.to_string());
     }
 
-    pub fn insert_document(&mut self, name: &str) {
+    pub fn push_posting(&mut self, term_id: u32, doc_id: u32, tf: u32) {
+        // Pushes the doc_id and tf to the posting assocaited with term_id. This function assumes doc_ids are added in an increasing order.
+        self.posting_lists[term_id as usize].push((doc_id, tf));
+    }
+
+    pub fn insert_document(&mut self, name: &str) -> u32 {
+        let doc_id = self.documents.len();
         self.documents.push(name.to_string());
+        return doc_id as u32;
     }
 
     fn compress(data: &[u8]) -> Vec<crate::index::posting_list::CompressedBlock> {
@@ -116,12 +123,16 @@ impl IndexBuilder {
     }
 
     pub fn build(self, compress_range: bool) -> Index {
+        let mut num_docs = self.num_documents;
+        if num_docs == 0 {
+            num_docs = self.documents.len();
+        }
         let posting_lists: Vec<PostingList> = self
             .posting_lists
             .into_par_iter()
             .map(|p_list| {
                 let range_size = self.bsize;
-                let blocks_num = div_ceil(self.num_documents, range_size);
+                let blocks_num = div_ceil(num_docs, range_size);
                 let mut range_maxes: Vec<u8> = vec![0; blocks_num];
                 p_list.iter().for_each(|&(docid, score)| {
                     let current_max = &mut range_maxes[docid as usize / range_size];
@@ -148,12 +159,18 @@ impl IndexBuilder {
             .collect();
 
         let mut build = MapBuilder::memory();
-        self.terms.iter().enumerate().for_each(|(index, term)| {
-            let _ = build.insert(term, index as u64);
+
+        let mut indexed_terms: Vec<(usize, &String)> = self.terms.iter().enumerate().collect();
+
+        // Sort the terms lexicographically while keeping the original indices
+        indexed_terms.sort_by(|a, b| a.1.cmp(b.1));
+
+        indexed_terms.iter().for_each(|(index, term)| {
+            let _ = build.insert(term, *index as u64);
         });
 
         Index {
-            num_documents: self.num_documents,
+            num_documents: num_docs,
             posting_lists,
             termmap: Map::new(build.into_inner().unwrap()).unwrap(),
             documents: self.documents,

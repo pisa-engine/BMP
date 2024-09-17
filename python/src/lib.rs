@@ -91,6 +91,125 @@ fn search(
     Ok(to_trec(&q_ids, results, index.documents()))
 }
 
+#[pyclass]
+struct InvertedIndexer {
+    path: PathBuf,
+    bsize: usize,
+    compress_range: bool,
+    inv_builder: bmp::index::inverted_index::IndexBuilder,
+    fwd_builder: bmp::index::forward_index::ForwardIndexBuilder,
+}
+
+#[pymethods]
+impl InvertedIndexer {
+
+    #[new]
+    fn py_new(path: PathBuf, bsize: usize, compress_range: bool) -> PyResult<Self> {
+        Ok(InvertedIndexer {
+            path: path,
+            bsize: bsize,
+            compress_range: compress_range,
+            inv_builder: bmp::index::inverted_index::IndexBuilder::new(0, bsize),
+            fwd_builder: bmp::index::forward_index::ForwardIndexBuilder::new(0),
+        })
+    }
+
+    fn add_document(
+        &mut self,
+        doc_id: String,
+        vector: Vec<(u32, u32)>,
+    ) -> PyResult<()> {
+      self.inv_builder.insert_document(&doc_id);
+      self.fwd_builder.insert_document(vector);
+      Ok(())
+    }
+
+    fn add_term(
+        &mut self,
+        term: String,
+        postings: Vec<(u32, u32)>,
+    ) -> PyResult<()> {
+      self.inv_builder.insert_term(&term, postings);
+      Ok(())
+    }
+
+    fn finish(
+        &mut self,
+    ) -> PyResult<()> {
+        let builder = std::mem::replace(&mut self.inv_builder, bmp::index::inverted_index::IndexBuilder::new(0, 0));
+        let inverted_index = builder.build(self.compress_range);
+        let forward_index = self.fwd_builder.build();
+        let b_forward_index = bmp::index::forward_index::fwd2bfwd(&forward_index, self.bsize);
+        let file = std::fs::File::create(self.path.clone()).expect("Failed to create file");
+        let writer = std::io::BufWriter::new(file);
+        // Serialize the index directly into a file using bincode
+        bincode::serialize_into(writer, &(&inverted_index, &b_forward_index))
+            .expect("Failed to serialize");
+        Ok(())
+    }
+}
+
+#[pyclass]
+struct Indexer {
+    path: PathBuf,
+    bsize: usize,
+    compress_range: bool,
+    inv_builder: bmp::index::inverted_index::IndexBuilder,
+    fwd_builder: bmp::index::forward_index::ForwardIndexBuilder,
+    term_map: HashMap<String, u32>,
+}
+
+#[pymethods]
+impl Indexer {
+
+    #[new]
+    fn py_new(path: PathBuf, bsize: usize, compress_range: bool) -> PyResult<Self> {
+        Ok(Indexer {
+            path: path,
+            bsize: bsize,
+            compress_range: compress_range,
+            inv_builder: bmp::index::inverted_index::IndexBuilder::new(0, bsize),
+            fwd_builder: bmp::index::forward_index::ForwardIndexBuilder::new(0),
+            term_map: HashMap::new(),
+        })
+    }
+
+    fn add_document(
+        &mut self,
+        doc_id: String,
+        vector: HashMap<String, u32>,
+    ) -> PyResult<()> {
+        let doc_idx = self.inv_builder.insert_document(&doc_id);
+        let mut int_vector: Vec<(u32, u32)> = Vec::new();
+        for (term, weight) in &vector {
+            if !self.term_map.contains_key(term) {
+                self.term_map.insert(term.clone(), self.term_map.len() as u32);
+                self.inv_builder.insert_term(term, Vec::new());
+            }
+            let term_idx = self.term_map[term];
+            self.inv_builder.push_posting(term_idx, doc_idx, *weight);
+            int_vector.push((term_idx, *weight))
+        }
+        self.fwd_builder.insert_document(int_vector);
+        Ok(())
+    }
+
+    fn finish(
+        &mut self,
+    ) -> PyResult<()> {
+        let builder = std::mem::replace(&mut self.inv_builder, bmp::index::inverted_index::IndexBuilder::new(0, 0));
+        let inverted_index = builder.build(self.compress_range);
+        let forward_index = self.fwd_builder.build();
+        let b_forward_index = bmp::index::forward_index::fwd2bfwd(&forward_index, self.bsize);
+        let file = std::fs::File::create(self.path.clone()).expect("Failed to create file");
+        let writer = std::io::BufWriter::new(file);
+        // Serialize the index directly into a file using bincode
+        bincode::serialize_into(writer, &(&inverted_index, &b_forward_index))
+            .expect("Failed to serialize");
+        Ok(())
+    }
+}
+
 /// A Python module implemented in Rust. The name of this function must match
 /// the `lib.name` setting in the `Cargo.toml`, else Python will not be able to
 /// import the module.
@@ -99,5 +218,7 @@ fn _bmp(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ciff2bmp, m)?)?;
     m.add_function(wrap_pyfunction!(search, m)?)?;
     m.add_class::<Searcher>()?;
+    m.add_class::<InvertedIndexer>()?;
+    m.add_class::<Indexer>()?;
     Ok(())
 }
