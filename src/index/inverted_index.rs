@@ -93,8 +93,14 @@ impl IndexBuilder {
         self.terms.push(term.to_string());
     }
 
-    pub fn insert_document(&mut self, name: &str) {
+    pub fn push_posting(&mut self, term_id: u32, doc_id: u32, tf: u32) {
+        self.posting_lists[term_id as usize].push((doc_id, tf));
+    }
+
+    pub fn insert_document(&mut self, name: &str) -> u32 {
+        let doc_id = self.documents.len();
         self.documents.push(name.to_string());
+        return doc_id as u32;
     }
 
     fn compress(data: &[u8]) -> Vec<crate::index::posting_list::CompressedBlock> {
@@ -152,8 +158,14 @@ impl IndexBuilder {
             .collect();
 
         let mut build = MapBuilder::memory();
-        self.terms.iter().enumerate().for_each(|(index, term)| {
-            let _ = build.insert(term, index as u64);
+
+        let mut indexed_terms: Vec<(usize, &String)> = self.terms.iter().enumerate().collect();
+
+        // Sort the terms lexicographically while keeping the original indices
+        indexed_terms.sort_by(|a, b| a.1.cmp(b.1));
+
+        indexed_terms.iter().for_each(|(index, term)| {
+            let _ = build.insert(term, *index as u64);
         });
 
         Index {

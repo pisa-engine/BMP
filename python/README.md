@@ -35,20 +35,10 @@ ciff2bmp(ciff_file="/path/to/ciff", output="/path/to/index", bsize=32, compress_
 
 ```python
 from bmp import Indexer
-import string
-import random
 indexer = Indexer('/path/to/index', bsize=32, compress_range=False)
-terms = [(c, []) for c in string.ascii_letters]
-for doc in range(10_000):
-    dvec = []
-    for idx in range(random.randrange(1, 10)):
-        tf = random.randrange(1, 1000)
-        tok = random.randrange(len(terms))
-        dvec.append((tok, tf))
-        terms[tok][1].append((doc, tf))
-    indexer.add_document(f'doc{doc}', dvec)
-for term, postings in terms:
-    indexer.add_term(term, postings)
+indexer.add_document('doc1', {'a': 1, 'b': 5, 'c': 8}) # docid, vector
+indexer.add_document('doc2', {'a': 2, 'c': 1, 'd': 8, 'f': 2})
+...
 indexer.finish()
 ```
 
