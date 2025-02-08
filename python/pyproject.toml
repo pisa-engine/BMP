@@ -15,3 +15,12 @@ classifiers = [
 [tool.maturin]
 python-source = "python"
 module-name = "bmp._bmp"
+
+[project.optional-dependencies]
+pyterrier = [
+    'python-terrier',
+    'pyterrier-alpha',
+]
+
+[project.entry-points."pyterrier.artifact"]
+"sparse_index.bmp" = "bmp.pyterrier:BmpIndex"
