@@ -31,17 +31,10 @@ impl PostingList {
             kth_score,
         }
     }
-    const fn map_kth_value(value: usize) -> usize {
-        match value {
-            10 => 0,
-            100 => 1,
-            1000 => 2,
-            _ => value, // default case
-        }
-    }
 
     pub fn kth(&self, k: usize) -> u8 {
-        return self.kth_score[Self::map_kth_value(k)];
+        let idx = ((k > 10) as usize) + (k > 100) as usize + (k > 1000) as usize;
+        self.kth_score.get(idx).copied().unwrap_or(0)
     }
 
     pub fn iter(&self, term_id: u32, term_weight: u32) -> PostingListIterator<'_> {
