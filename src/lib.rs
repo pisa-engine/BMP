@@ -1,4 +1,6 @@
+#![cfg(target_arch = "aarch64")]
 #![feature(stdarch_aarch64_prefetch)]
+
 #![recursion_limit = "1024"]
 
 
