@@ -10,6 +10,7 @@ use std::time::Instant;
 
 #[cfg(target_arch = "aarch64")]
 use std::arch::aarch64::{_prefetch, _PREFETCH_LOCALITY0, _PREFETCH_READ};
+
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 
