@@ -6,8 +6,12 @@ use crate::query::cursor::{RangeMaxScore, RangeMaxScoreCursor};
 use crate::query::live_block;
 use crate::query::topk_heap::TopKHeap;
 use crate::util::progress_bar;
-use std::arch::x86_64::_mm_prefetch;
 use std::time::Instant;
+
+#[cfg(target_arch = "aarch64")]
+use std::arch::aarch64::{_prefetch, _PREFETCH_LOCALITY0, _PREFETCH_READ};
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 
 pub fn b_search(
     queries: Vec<Vec<PostingListIterator>>,
@@ -101,17 +105,36 @@ pub fn b_search_verbose(
                 });
 
         let (mut current_ub, mut current_block) = ub_iter.next().unwrap();
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             _mm_prefetch(
                 forward_index.data.as_ptr().add(*current_block as usize) as *const i8,
-                std::arch::x86_64::_MM_HINT_T0,
+                _MM_HINT_T0,
             );
         }
+        #[cfg(target_arch = "aarch64")]
+        unsafe {
+            _prefetch(
+                forward_index.data.as_ptr().add(*current_block as usize) as *const i8,
+                _PREFETCH_READ,
+                _PREFETCH_LOCALITY0,
+            );
+        }
+
         for (next_ub, next_block) in ub_iter {
+            #[cfg(target_arch = "x86_64")]
             unsafe {
                 _mm_prefetch(
                     forward_index.data.as_ptr().add(*next_block as usize) as *const i8,
-                    std::arch::x86_64::_MM_HINT_T0,
+                    _MM_HINT_T0,
+                );
+            }
+            #[cfg(target_arch = "aarch64")]
+            unsafe {
+                _prefetch(
+                    forward_index.data.as_ptr().add(*next_block as usize) as *const i8,
+                    _PREFETCH_READ,
+                    _PREFETCH_LOCALITY0,
                 );
             }
 

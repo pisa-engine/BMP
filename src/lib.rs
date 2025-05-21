@@ -1,4 +1,5 @@
 #![recursion_limit = "1024"]
+#![feature(stdarch_aarch64_prefetch)]
 
 pub mod ciff;
 pub mod index;
