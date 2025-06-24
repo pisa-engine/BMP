@@ -6,6 +6,7 @@ use crate::query::cursor::{RangeMaxScore, RangeMaxScoreCursor};
 use crate::query::live_block;
 use crate::query::topk_heap::TopKHeap;
 use crate::util::progress_bar;
+#[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::_mm_prefetch;
 use std::time::Instant;
 
@@ -101,6 +102,7 @@ pub fn b_search_verbose(
                 });
 
         let (mut current_ub, mut current_block) = ub_iter.next().unwrap();
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             _mm_prefetch(
                 forward_index.data.as_ptr().add(*current_block as usize) as *const i8,
@@ -108,6 +110,7 @@ pub fn b_search_verbose(
             );
         }
         for (next_ub, next_block) in ub_iter {
+            #[cfg(target_arch = "x86_64")]
             unsafe {
                 _mm_prefetch(
                     forward_index.data.as_ptr().add(*next_block as usize) as *const i8,
