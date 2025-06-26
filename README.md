@@ -52,8 +52,14 @@ trec_eval -M 10 -m recip_rank qrels.msmarco-passage.dev-subset.txt bp-msmarco-pa
 
 Form PyPi:
 
+```sh
+pip install bmp
 ```
-pip intall bmp
+
+or 
+
+```sh
+pip install git+https://github.com/pisa-engine/BMP.git#subdirectory=python
 ```
 
 From source (in the 'python' directory, i.e `cd python`):
