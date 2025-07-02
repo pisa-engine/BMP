@@ -14,6 +14,29 @@ use std::arch::aarch64::{_prefetch, _PREFETCH_LOCALITY0, _PREFETCH_READ};
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 
+
+#[cfg(target_arch = "x86_64")]
+fn prefetch_block(forward_index: &BlockForwardIndex, block: u32) {
+    unsafe {
+        _mm_prefetch(
+            forward_index.data.as_ptr().add(block as usize) as *const i8,
+            _MM_HINT_T0,
+        );
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
+fn prefetch_block(forward_index: &BlockForwardIndex, block: u32) {
+    unsafe {
+        _prefetch(
+            forward_index.data.as_ptr().add(block as usize) as *const i8,
+            _PREFETCH_READ,
+            _PREFETCH_LOCALITY0,
+        );
+    }
+}
+
+
 pub fn b_search(
     queries: Vec<Vec<PostingListIterator>>,
     forward_index: &BlockForwardIndex,
@@ -106,39 +129,10 @@ pub fn b_search_verbose(
                 });
 
         let (mut current_ub, mut current_block) = ub_iter.next().unwrap();
-        #[cfg(target_arch = "x86_64")]
-        unsafe {
-            _mm_prefetch(
-                forward_index.data.as_ptr().add(*current_block as usize) as *const i8,
-                _MM_HINT_T0,
-            );
-        }
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            _prefetch(
-                forward_index.data.as_ptr().add(*current_block as usize) as *const i8,
-                _PREFETCH_READ,
-                _PREFETCH_LOCALITY0,
-            );
-        }
+        prefetch_block(forward_index, *current_block);
 
         for (next_ub, next_block) in ub_iter {
-            #[cfg(target_arch = "x86_64")]
-            unsafe {
-                _mm_prefetch(
-                    forward_index.data.as_ptr().add(*next_block as usize) as *const i8,
-                    _MM_HINT_T0,
-                );
-            }
-            #[cfg(target_arch = "aarch64")]
-            unsafe {
-                _prefetch(
-                    forward_index.data.as_ptr().add(*next_block as usize) as *const i8,
-                    _PREFETCH_READ,
-                    _PREFETCH_LOCALITY0,
-                );
-            }
-
+            prefetch_block(forward_index, *next_block);
             let offset = *current_block as usize * forward_index.block_size;
 
             let res = block_score(
