@@ -76,4 +76,4 @@ class BmpRetriever(pt.Indexer):
         return res.to_df(inp)
     def fuse_rank_cutoff(self, k):
         if self.num_results > k:
-            return BmpRetriever(self.bmp_index, num_results=k, alpha=self.apha, beta=self.beta)
+            return BmpRetriever(self.bmp_index, num_results=k, alpha=self.alpha, beta=self.beta)

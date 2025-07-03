@@ -4,14 +4,45 @@ build-backend = "maturin"
 
 [project]
 name = "bmp"
-version = "0.2"
-requires-python = ">=3.7"
+version = "0.2.3"
+description = "Faster Learned Sparse Retrieval with Block-Max Pruning"
+authors = [
+    {name = "Antonio Mallia"},
+    {name = "Torsten Suel"},
+    {name = "Nicola Tonellotto"},
+    {name = "Sean MacAvaney"},
+]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.8"
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Text Processing :: Indexing",
+]
+keywords = ["information retrieval", "sparse retrieval", "search", "indexing", "block-max pruning"]
+dependencies = [
+    "numpy",
 ]
 
+[project.urls]
+Homepage = "https://github.com/pisa-engine/BMP"
+Repository = "https://github.com/pisa-engine/BMP.git"
+Documentation = "https://github.com/pisa-engine/BMP/tree/main/python"
+"Bug Tracker" = "https://github.com/pisa-engine/BMP/issues"
 
 [tool.maturin]
 python-source = "python"
@@ -19,8 +50,9 @@ module-name = "bmp._bmp"
 
 [project.optional-dependencies]
 pyterrier = [
-    'python-terrier',
-    'pyterrier-alpha',
+    "python-terrier",
+    "pyterrier-alpha",
+    "numpy",
 ]
 
 [project.entry-points."pyterrier.artifact"]
