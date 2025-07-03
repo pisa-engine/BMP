@@ -29,7 +29,7 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          target: ${{ matrix.target }}
+          target: x86_64
           args: --release --out dist --manifest-path python/Cargo.toml
           sccache: 'true'
           manylinux: auto
@@ -37,7 +37,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-linux
           path: dist
 
   windows:
@@ -67,7 +67,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-windows-${{ matrix.target }}-${{ matrix.python-version }}
           path: dist
 
   macos:
@@ -96,7 +96,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-macos-${{ matrix.target }}-${{ matrix.python-version }}
           path: dist
 
   sdist:
@@ -120,7 +120,7 @@ jobs:
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-sdist
           path: dist
 
   release:
@@ -131,10 +131,16 @@ jobs:
       - name: Display release type
         run: echo "Deploying ${{ github.event.inputs.releasetype }} to PyPI"
 
-      - uses: actions/download-artifact@v3
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: wheels
-          path: dist
+          path: artifacts
+
+      - name: Move all wheels to dist directory
+        run: |
+          mkdir -p dist
+          find artifacts -name "*.whl" -exec mv {} dist/ \;
+          find artifacts -name "*.tar.gz" -exec mv {} dist/ \;
 
       - name: List built packages
         run: ls -la dist/
