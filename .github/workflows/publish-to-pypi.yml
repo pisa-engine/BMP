@@ -103,30 +103,6 @@ jobs:
           name: wheels-macos-${{ matrix.target }}-${{ matrix.python-version }}
           path: dist
 
-  sdist:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Display release type
-        run: echo "Deploying ${{ github.event.inputs.releasetype }} to PyPI"
-
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist --manifest-path python/Cargo.toml
-
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-sdist
-          path: dist
-
   release:
     name: Release
     runs-on: ubuntu-latest
