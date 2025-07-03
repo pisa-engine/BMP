@@ -130,9 +130,10 @@ jobs:
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.TEST_PYPI_PASSWORD }}
+          MATURIN_REPOSITORY: testpypi
         with:
           command: upload
-          args: --non-interactive --skip-existing --repository testpypi dist/*
+          args: --non-interactive --skip-existing dist/*
 
       - name: Publish to PyPI
         if: github.event.inputs.releasetype == 'release'
