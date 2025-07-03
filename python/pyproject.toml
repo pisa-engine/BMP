@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "bmp"
-version = "0.2.4"
+version = "0.2.5"
 description = "Faster Learned Sparse Retrieval with Block-Max Pruning"
 authors = [
     {name = "Antonio Mallia"},
@@ -34,9 +34,7 @@ classifiers = [
     "Topic :: Text Processing :: Indexing",
 ]
 keywords = ["information retrieval", "sparse retrieval", "search", "indexing", "block-max pruning"]
-dependencies = [
-    "numpy",
-]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/pisa-engine/BMP"
@@ -52,7 +50,6 @@ module-name = "bmp._bmp"
 pyterrier = [
     "python-terrier",
     "pyterrier-alpha",
-    "numpy",
 ]
 
 [project.entry-points."pyterrier.artifact"]
