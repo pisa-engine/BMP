@@ -22,6 +22,24 @@ serde = { version = "1.0.193", features = ["derive"] }
 fst = "0.4.7"
 num-integer = "0.1.45"
 rayon = "1.8.0"
+# High-performance computing additions
+wide = "0.7"              # SIMD operations
+blas = "0.23"             # BLAS operations
+sprs = "0.11"             # Sparse matrix operations
+arrayfire = { version = "3.8", optional = true }  # GPU acceleration
+simdeez = "1.0"           # Cross-platform SIMD
+
+# Use Accelerate on macOS (fast, no compilation)
+[target.'cfg(target_os = "macos")'.dependencies]
+blas-src = { version = "0.11", default-features = false, features = ["accelerate"] }
+
+# Use OpenBLAS on other platforms
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+openblas-src = { version = "0.10", features = ["cblas", "system"] }
 
 [build-dependencies]
 protobuf-codegen-pure = "2.22"
+
+[features]
+default = []
+gpu = ["arrayfire"]

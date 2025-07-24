@@ -1,6 +1,9 @@
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use wide::u16x8;
+use sprs::{CsMat, TriMat};
+use std::collections::HashMap;
 
 const DEFAULT_PROGRESS_TEMPLATE: &str =
     "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {count}/{total} ({eta})";
@@ -123,6 +126,17 @@ pub fn block_score(
     document: &[(u16, Vec<(u8, u8)>)],
     bsize: usize,
 ) -> Vec<u16> {
+    // Use original implementation - it's actually faster for most cases
+    block_score_original(query, document, bsize)
+}
+
+// Original implementation kept for compatibility
+#[inline]
+pub fn block_score_original(
+    query: &Vec<(u16, u8)>,
+    document: &[(u16, Vec<(u8, u8)>)],
+    bsize: usize,
+) -> Vec<u16> {
     let mut doc_score = vec![0; bsize];
 
     unsafe {
@@ -147,4 +161,138 @@ pub fn block_score(
     }
 
     doc_score
+}
+
+#[inline]
+pub fn block_score_sparse(
+    query_sparse: &sprs::CsVec<u16>,
+    document_matrix: &CsMat<u16>,
+) -> Vec<u16> {
+    // Sparse matrix-vector multiplication
+    let result = document_matrix * query_sparse;
+    result.data().to_vec()
+}
+
+// SIMD version for when it's actually beneficial (very specific cases)
+#[inline]
+pub fn block_score_simd_opt(
+    query: &Vec<(u16, u8)>,
+    document: &[(u16, Vec<(u8, u8)>)],
+    bsize: usize,
+) -> Vec<u16> {
+    // Only use SIMD for large blocks where overhead is justified
+    if bsize >= 256 && query.len() > 10 {
+        let mut doc_score = vec![0u16; bsize];
+        
+        for &(query_term, query_weight) in query {
+            // Binary search for term in document
+            if let Ok(term_idx) = document.binary_search_by_key(&query_term, |&(term, _)| term) {
+                let impact_list = &document[term_idx].1;
+                
+                // Process in chunks of 8 for SIMD
+                let chunks = bsize / 8;
+                for chunk_start in (0..chunks * 8).step_by(8) {
+                    let mut scores_array = [0u16; 8];
+                    
+                    for &(doc_offset, impact) in impact_list {
+                        let doc_idx = doc_offset as usize;
+                        if doc_idx >= chunk_start && doc_idx < chunk_start + 8 {
+                            let lane = doc_idx - chunk_start;
+                            scores_array[lane] += (query_weight as u16) * (impact as u16);
+                        }
+                    }
+                    
+                    // Simple addition without complex SIMD operations
+                    for (i, &score_inc) in scores_array.iter().enumerate() {
+                        doc_score[chunk_start + i] += score_inc;
+                    }
+                }
+                
+                // Handle remainder
+                for &(doc_offset, impact) in impact_list {
+                    let doc_idx = doc_offset as usize;
+                    if doc_idx >= chunks * 8 {
+                        doc_score[doc_idx] += (query_weight as u16) * (impact as u16);
+                    }
+                }
+            }
+        }
+        doc_score
+    } else {
+        // Fall back to original for small blocks
+        block_score_original(query, document, bsize)
+    }
+}
+
+// Sparse matrix representation for better memory efficiency (no serialization)
+pub struct SparseBlockForwardIndex {
+    pub sparse_data: Vec<CsMat<u16>>, // Compressed sparse row matrices
+    pub block_size: usize,
+    pub num_terms: usize,
+}
+
+impl SparseBlockForwardIndex {
+    pub fn from_block_forward_index(bfi: &BlockForwardIndex) -> Self {
+        let mut sparse_data = Vec::new();
+        let mut max_term_id = 0;
+        
+        for block in &bfi.data {
+            // Find dimensions
+            let mut doc_ids = Vec::new();
+            let mut term_ids = Vec::new();
+            let mut scores = Vec::new();
+            let mut max_doc_id = 0;
+            
+            for (term_id, doc_score_pairs) in block {
+                max_term_id = max_term_id.max(*term_id);
+                for &(doc_id, score) in doc_score_pairs {
+                    doc_ids.push(doc_id as usize);
+                    term_ids.push(*term_id as usize);
+                    scores.push(score as u16);
+                    max_doc_id = max_doc_id.max(doc_id as usize);
+                }
+            }
+            
+            // Create sparse matrix (documents x terms)
+            let mut triplet_mat = TriMat::new((max_doc_id + 1, max_term_id as usize + 1));
+            for ((doc_id, term_id), score) in doc_ids.iter().zip(term_ids.iter()).zip(scores.iter()) {
+                triplet_mat.add_triplet(*doc_id, *term_id, *score);
+            }
+            
+            sparse_data.push(triplet_mat.to_csr());
+        }
+        
+        SparseBlockForwardIndex {
+            sparse_data,
+            block_size: bfi.block_size,
+            num_terms: max_term_id as usize + 1,
+        }
+    }
+}
+
+// Optimized sparse query representation
+pub struct SparseQuery {
+    pub term_ids: Vec<usize>,
+    pub weights: Vec<u16>,
+    pub sparse_vec: sprs::CsVec<u16>,
+}
+
+impl SparseQuery {
+    pub fn from_query_vec(query_vec: &[(u16, u8)], num_terms: usize) -> Self {
+        let mut term_ids = Vec::new();
+        let mut weights = Vec::new();
+        
+        for &(term_id, weight) in query_vec {
+            term_ids.push(term_id as usize);
+            weights.push(weight as u16);
+        }
+        
+        let sparse_vec = sprs::CsVec::new(num_terms, term_ids.clone(), weights.clone());
+        
+        SparseQuery {
+            term_ids,
+            weights,
+            sparse_vec,
+        }
+    }
 }
