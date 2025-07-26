@@ -65,7 +65,8 @@ pub fn b_search_verbose(
 
     let mut search_elapsed = 0;
     let mut buckets: Vec<Vec<u32>> = (0..=2usize.pow(16)).map(|_| Vec::new()).collect();
-
+    let mut upper_bounds_elapsed = 0;
+    let mut block_score_elapsed = 0;
     for query in queries.iter_mut() {
         let total_terms = query.len();
         let terms_to_keep = (total_terms as f32 * terms_r).ceil() as usize;
@@ -98,6 +99,8 @@ pub fn b_search_verbose(
 
         let start_search: Instant = Instant::now();
         let run_compressed = query_ranges_compressed.len() > 0;
+        
+        let start_upper_bounds = Instant::now();
         let upper_bounds = match run_compressed {
             true => live_block::compute_upper_bounds(
                 &query_ranges_compressed,
@@ -110,6 +113,8 @@ pub fn b_search_verbose(
                 forward_index.data.len(),
             ),
         };
+        upper_bounds_elapsed += start_upper_bounds.elapsed().as_micros();
+
 
         let mut topk = TopKHeap::with_threshold(k, threshold as u16);
         buckets.iter_mut().for_each(std::vec::Vec::clear);
@@ -135,11 +140,13 @@ pub fn b_search_verbose(
             prefetch_block(forward_index, *next_block);
             let offset = *current_block as usize * forward_index.block_size;
 
+            let start_block_score = Instant::now();
             let res = block_score(
                 &query_vec,
                 &forward_index.data[*current_block as usize],
                 forward_index.block_size,
             );
+            block_score_elapsed += start_block_score.elapsed().as_micros();
 
             for (doc_id, &score) in res.iter().enumerate() {
                 topk.insert(DocId(doc_id as u32 + offset as u32), score);
@@ -162,10 +169,14 @@ pub fn b_search_verbose(
     }
 
     if verbose {
+
+        eprintln!("Total upper bounds computation time: {} us", upper_bounds_elapsed / results.len() as u128);
+        eprintln!("Total block score computation time: {} us", block_score_elapsed / results.len() as u128);
         eprintln!(
-            "search_elapsed = {}",
+            "search_elapsed = {} us",
             search_elapsed / results.len() as u128
         );
+
     }
 
     results

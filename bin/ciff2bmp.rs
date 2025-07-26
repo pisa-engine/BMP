@@ -17,6 +17,8 @@ struct Args {
     bsize: usize,
     #[structopt(short, long, help = "Compress range data")]
     compress_range: bool,
+    #[structopt(short, long, help = "Range pruning ratio", default_value = "0.0")]
+    range_pruning: f32,
 }
 
 fn main() {
@@ -31,6 +33,7 @@ fn main() {
         .input_path(args.ciff_file)
         .output_path(args.output)
         .compress_range(args.compress_range)
+        .range_pruning_ratio(args.range_pruning)
         .bsize(args.bsize);
 
     // Convert the Ciff file to BMP format
