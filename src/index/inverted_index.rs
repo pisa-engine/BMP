@@ -75,7 +75,7 @@ pub struct IndexBuilder {
     posting_lists: Vec<Vec<(u32, u32)>>,
     terms: Vec<String>,
     documents: Vec<String>,
-    range_pruning_ratio: f32
+    range_pruning_ratio: f32,
 }
 
 impl IndexBuilder {
