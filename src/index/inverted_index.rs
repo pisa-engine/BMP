@@ -75,16 +75,18 @@ pub struct IndexBuilder {
     posting_lists: Vec<Vec<(u32, u32)>>,
     terms: Vec<String>,
     documents: Vec<String>,
+    range_pruning_ratio: f32
 }
 
 impl IndexBuilder {
-    pub fn new(num_documents: usize, bsize: usize) -> Self {
+    pub fn new(num_documents: usize, bsize: usize, range_pruning_ratio: f32) -> Self {
         IndexBuilder {
             num_documents,
             bsize,
             posting_lists: Vec::new(),
             terms: Vec::new(),
             documents: Vec::new(),
+            range_pruning_ratio,
         }
     }
 
@@ -134,12 +136,18 @@ impl IndexBuilder {
                 let range_size = self.bsize;
                 let blocks_num = div_ceil(num_docs, range_size);
                 let mut range_maxes: Vec<u8> = vec![0; blocks_num];
-                p_list.iter().for_each(|&(docid, score)| {
-                    let current_max = &mut range_maxes[docid as usize / range_size];
-                    *current_max = cmp::max(*current_max, score as u8);
-                });
                 let mut sorted_scores: Vec<u32> = p_list.iter().map(|&(_, score)| score).collect();
                 sorted_scores.sort_by(|a, b| b.cmp(&a));
+
+                let pruning_threshold = sorted_scores.get(((1.0 - self.range_pruning_ratio) * sorted_scores.len() as f32) as usize).copied().unwrap_or(0) as u32;
+
+
+                p_list.iter().for_each(|&(docid, score)| {
+                    if score >= pruning_threshold {
+                        let current_max = &mut range_maxes[docid as usize / range_size];
+                        *current_max = cmp::max(*current_max, score as u8);
+                    }
+                });
 
                 // Retrieve the 10th, 100th and 1000th elements
                 let s10th = sorted_scores.get(9).copied().unwrap_or(0) as u8;
