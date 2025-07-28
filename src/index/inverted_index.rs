@@ -139,7 +139,10 @@ impl IndexBuilder {
                 let mut sorted_scores: Vec<u32> = p_list.iter().map(|&(_, score)| score).collect();
                 sorted_scores.sort_by(|a, b| b.cmp(&a));
 
-                let pruning_threshold = sorted_scores.get(((1.0 - self.range_pruning_ratio) * sorted_scores.len() as f32) as usize).copied().unwrap_or(0) as u32;
+                let pruning_ratio = 1.0 - self.range_pruning_ratio;
+                let threshold_index = (pruning_ratio * sorted_scores.len() as f32) as usize;
+                let optional_threshold = sorted_scores.get(threshold_index).copied();
+                let pruning_threshold = optional_threshold.unwrap_or(0) as u32;
 
 
                 p_list.iter().for_each(|&(docid, score)| {
