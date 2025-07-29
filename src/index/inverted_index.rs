@@ -15,9 +15,7 @@ pub struct Index {
         serialize_with = "serialize_fst_map",
         deserialize_with = "deserialize_fst_map"
     )]
-    // #[serde(skip_serializing, skip_deserializing)]
     termmap: Map<Vec<u8>>,
-    // #[serde(skip_serializing, skip_deserializing)]
     documents: Vec<String>,
 }
 

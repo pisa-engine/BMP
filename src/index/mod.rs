@@ -7,6 +7,10 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
+pub type TermId = u16;
+pub type Posting = u8;
+pub type Score = u16;
+
 pub fn from_file<P: Into<PathBuf>>(
     index_path: P,
 ) -> Result<(inverted_index::Index, forward_index::BlockForwardIndex)> {

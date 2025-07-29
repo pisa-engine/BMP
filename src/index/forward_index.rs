@@ -2,6 +2,8 @@ use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::index::{TermId, Posting, Score};
+
 const DEFAULT_PROGRESS_TEMPLATE: &str =
     "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {count}/{total} ({eta})";
 
@@ -12,15 +14,11 @@ fn pb_style() -> ProgressStyle {
         .progress_chars("=> ")
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
-pub struct BlockDocument {
-    pub terms: Vec<u16>,
-    pub docs_impacts: Vec<Vec<(u8, u8)>>,
-}
+
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct BlockForwardIndex {
-    pub data: Vec<Vec<(u16, Vec<(u8, u8)>)>>,
+    pub data: Vec<Vec<(TermId, Vec<(Posting, Score)>)>>,
     pub block_size: usize,
 }
 
@@ -99,14 +97,14 @@ pub fn fwd2bfwd(fwd: &ForwardIndex, block_size: usize) -> BlockForwardIndex {
             term_pairs.sort_by_key(|pair| pair.0);
 
             // Aggregate term-score pairs
-            let mut aggregated: Vec<(u16, Vec<(u8, u8)>)> = Vec::new();
+            let mut aggregated: Vec<(TermId, Vec<(Posting, Score)>)> = Vec::new();
             let mut current_term = None;
             let mut current_scores = Vec::new();
             for (term,doc_id, score) in term_pairs {
                 match current_term {
                     Some(t) if t == term => current_scores.push((
-                        doc_id as u8,
-                        score as u8,
+                        doc_id as Posting,
+                        score as Score,
                     )),
                     _ => {
                         if let Some(t) = current_term {
@@ -114,12 +112,12 @@ pub fn fwd2bfwd(fwd: &ForwardIndex, block_size: usize) -> BlockForwardIndex {
                             current_scores.clear();
                         }
                         current_term = Some(term);
-                        current_scores.push((doc_id as u8,score as u8));
+                        current_scores.push((doc_id as Posting,score as Score));
                     }
                 }
             }
             if let Some(t) = current_term {
-                aggregated.push((t as u16, current_scores));
+                aggregated.push((t as TermId, current_scores));
             }
             progress.inc(1);
 
@@ -131,10 +129,10 @@ pub fn fwd2bfwd(fwd: &ForwardIndex, block_size: usize) -> BlockForwardIndex {
 
 #[inline]
 pub fn block_score(
-    query: &Vec<(u16, u8)>,
-    document: &[(u16, Vec<(u8, u8)>)],
+    query: &Vec<(TermId, u8)>,
+    document: &[(TermId, Vec<(Posting, Score)>)],
     bsize: usize,
-) -> Vec<u16> {
+) -> Vec<u32> {
     let mut doc_score = vec![0; bsize];
 
     unsafe {
@@ -151,7 +149,7 @@ pub fn block_score(
                 let mut inner_ptr = (*term_ptr).1.as_ptr();
                 let end_inner_ptr = inner_ptr.wrapping_offset((*term_ptr).1.len() as isize);
                 while inner_ptr != end_inner_ptr {
-                    doc_score[(*inner_ptr).0 as usize] += (value as u16) * ((*inner_ptr).1 as u16);
+                    doc_score[(*inner_ptr).0 as usize] += (value as u32) * ((*inner_ptr).1 as u32);
                     inner_ptr = inner_ptr.add(1);
                 }
             }

@@ -10,11 +10,14 @@ pub fn progress_bar(name: &str, limit: usize) -> indicatif::ProgressBar {
 }
 
 // Function to convert query results to TREC format and print to stdout
-pub fn to_trec(
+pub fn to_trec<S>(
     query_ids: &[String],
-    mut results: Vec<TopKHeap<u16>>,
+    results:& mut Vec<TopKHeap<S>>,
     doc_lexicon: &[String],
-) -> String {
+) -> String 
+where
+    S: Copy + PartialOrd + std::fmt::Display + Clone + Default,
+{
     let mut output = String::new();
 
     for (id, result) in query_ids.iter().zip(results.iter_mut()) {

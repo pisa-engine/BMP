@@ -40,10 +40,10 @@ fn main() -> Result<()> {
     let (q_ids, cursors) = cursors_from_queries(args.queries, &index);
 
     eprintln!("Performing query processing");
-    let results = b_search(cursors, &bfwd, args.k, args.alpha, args.beta);
+    let mut results = b_search(cursors, &bfwd, args.k, args.alpha, args.beta);
 
     eprintln!("Exporting TREC run");
     // 4. Log results into TREC format
-    print!("{}", to_trec(&q_ids, results, index.documents()));
+    print!("{}", to_trec(&q_ids, &mut results, index.documents()));
     Ok(())
 }

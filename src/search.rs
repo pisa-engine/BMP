@@ -101,12 +101,12 @@ pub fn b_search_verbose(
             true => live_block::compute_upper_bounds(
                 &query_ranges_compressed,
                 &query_weights,
-                forward_index.data.len(),
+                forward_index.data.len()
             ),
             false => live_block::compute_upper_bounds_raw(
                 &query_ranges_raw,
                 &query_weights,
-                forward_index.data.len(),
+            forward_index.data.len()
             ),
         };
 
@@ -143,7 +143,7 @@ pub fn b_search_verbose(
             );
 
             for (doc_id, &score) in res.iter().enumerate() {
-                topk.insert(DocId(doc_id as u32 + offset as u32), score);
+                topk.insert(DocId(doc_id as u32 + offset as u32), score as u16);
             }
 
             if topk.threshold() as f32 > current_ub as f32 * alpha {
