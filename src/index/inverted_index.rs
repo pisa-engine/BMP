@@ -144,7 +144,6 @@ impl IndexBuilder {
                 let optional_threshold = sorted_scores.get(threshold_index).copied();
                 let pruning_threshold = optional_threshold.unwrap_or(0) as u32;
 
-
                 p_list.iter().for_each(|&(docid, score)| {
                     if score >= pruning_threshold {
                         let current_max = &mut range_maxes[docid as usize / range_size];

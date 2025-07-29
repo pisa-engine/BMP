@@ -56,7 +56,10 @@ impl ForwardIndexBuilder {
         // Sort in decreasing order (largest to smallest)
         sorted_scores.sort_by(|a, b| b.cmp(&a));
 
-        let pruning_threshold = sorted_scores.get(((1.0 - self.fwd_pruning_ratio) * sorted_scores.len() as f32) as usize).copied().unwrap_or(0) as u32;
+        let pruning_threshold = sorted_scores
+            .get(((1.0 - self.fwd_pruning_ratio) * sorted_scores.len() as f32) as usize)
+            .copied()
+            .unwrap_or(0) as u32;
         for (doc_id, score) in posting_list {
             if *score >= pruning_threshold {
                 self.forward_index.data[*doc_id as usize].push((term_id as u32, *score));

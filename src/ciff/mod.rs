@@ -120,11 +120,25 @@ impl CiffToBmp {
             .as_ref()
             .ok_or_else(|| anyhow!("input path undefined"))?;
         let bsize = self.bsize.ok_or_else(|| anyhow!("bsize undefined"))?;
-        convert_to_bmp(input, output, bsize, self.compress_range, self.range_pruning_ratio, self.fwd_pruning_ratio)
+        convert_to_bmp(
+            input,
+            output,
+            bsize,
+            self.compress_range,
+            self.range_pruning_ratio,
+            self.fwd_pruning_ratio,
+        )
     }
 }
 
-fn convert_to_bmp(input: &Path, output: &Path, bsize: usize, compress_range: bool, range_pruning_ratio: f32, fwd_pruning_ratio: f32) -> Result<()> {
+fn convert_to_bmp(
+    input: &Path,
+    output: &Path,
+    bsize: usize,
+    compress_range: bool,
+    range_pruning_ratio: f32,
+    fwd_pruning_ratio: f32,
+) -> Result<()> {
     println!("{:?}", output);
     let mut ciff_reader =
         File::open(input).with_context(|| format!("Unable to open {}", input.display()))?;
@@ -199,7 +213,8 @@ fn convert_to_bmp(input: &Path, output: &Path, bsize: usize, compress_range: boo
     progress.set_style(pb_style());
     progress.set_draw_delta((header.num_postings_lists / 100) as u64);
 
-    let mut fwd_builder = ForwardIndexBuilder::new(header.num_documents as usize, fwd_pruning_ratio);
+    let mut fwd_builder =
+        ForwardIndexBuilder::new(header.num_documents as usize, fwd_pruning_ratio);
 
     for term_id in 0..header.num_postings_lists {
         let list = input.read_message::<PostingsList>()?;
