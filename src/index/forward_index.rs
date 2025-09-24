@@ -2,6 +2,12 @@ use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
+
+#[cfg(target_arch = "aarch64")]
+use std::arch::aarch64::*;
+
 const DEFAULT_PROGRESS_TEMPLATE: &str =
     "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {count}/{total} ({eta})";
 
@@ -136,15 +142,184 @@ pub fn block_score(
                 break;
             }
             if (*term_ptr).0 == coordinate {
-                let mut inner_ptr = (*term_ptr).1.as_ptr();
-                let end_inner_ptr = inner_ptr.wrapping_offset((*term_ptr).1.len() as isize);
-                while inner_ptr != end_inner_ptr {
-                    doc_score[(*inner_ptr).0 as usize] += (value as u16) * ((*inner_ptr).1 as u16);
-                    inner_ptr = inner_ptr.add(1);
+                let impacts = &(*term_ptr).1;
+                let mut inner_ptr = impacts.as_ptr();
+                let end_inner_ptr = inner_ptr.wrapping_offset(impacts.len() as isize);
+                
+                // SIMD optimization for bulk processing
+                #[cfg(target_arch = "x86_64")]
+                {
+                    if is_x86_feature_detected!("avx2") && impacts.len() >= 8 {
+                        block_score_simd_x86_64(&mut doc_score, inner_ptr, end_inner_ptr, value);
+                    } else {
+                        block_score_scalar(&mut doc_score, inner_ptr, end_inner_ptr, value);
+                    }
+                }
+                
+                #[cfg(target_arch = "aarch64")]
+                {
+                    if std::arch::is_aarch64_feature_detected!("neon") && impacts.len() >= 8 {
+                        block_score_simd_aarch64(&mut doc_score, inner_ptr, end_inner_ptr, value);
+                    } else {
+                        block_score_scalar(&mut doc_score, inner_ptr, end_inner_ptr, value);
+                    }
+                }
+                
+                #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+                {
+                    block_score_scalar(&mut doc_score, inner_ptr, end_inner_ptr, value);
                 }
             }
         }
     }
 
     doc_score
+}
+
+#[inline]
+unsafe fn block_score_scalar(
+    doc_score: &mut [u16],
+    mut inner_ptr: *const (u8, u8),
+    end_inner_ptr: *const (u8, u8),
+    value: u8,
+) {
+    while inner_ptr != end_inner_ptr {
+        doc_score[(*inner_ptr).0 as usize] += (value as u16) * ((*inner_ptr).1 as u16);
+        inner_ptr = inner_ptr.add(1);
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[inline]
+unsafe fn block_score_simd_x86_64(
+    doc_score: &mut [u16],
+    mut inner_ptr: *const (u8, u8),
+    end_inner_ptr: *const (u8, u8),
+    value: u8,
+) {
+    let value_vec = _mm256_set1_epi16(value as i16);
+    
+    while inner_ptr.wrapping_offset(8) <= end_inner_ptr {
+        // Load 8 pairs of (offset, impact)
+        let data = _mm256_loadu_si256(inner_ptr as *const __m256i);
+        
+        // Extract offsets (first 8 bytes)
+        let offsets = _mm256_and_si256(data, _mm256_set1_epi16(0xFF));
+        
+        // Extract impacts (second 8 bytes)
+        let impacts = _mm256_srli_epi16(data, 8);
+        let impacts = _mm256_and_si256(impacts, _mm256_set1_epi16(0xFF));
+        
+        // Multiply impacts by value
+        let scaled_impacts = _mm256_mullo_epi16(impacts, value_vec);
+        
+        // Process each element using unrolled loop
+        let offset0 = _mm256_extract_epi16(offsets, 0) as usize;
+        let impact0 = _mm256_extract_epi16(scaled_impacts, 0) as u16;
+        if offset0 < doc_score.len() { doc_score[offset0] += impact0; }
+        
+        let offset1 = _mm256_extract_epi16(offsets, 1) as usize;
+        let impact1 = _mm256_extract_epi16(scaled_impacts, 1) as u16;
+        if offset1 < doc_score.len() { doc_score[offset1] += impact1; }
+        
+        let offset2 = _mm256_extract_epi16(offsets, 2) as usize;
+        let impact2 = _mm256_extract_epi16(scaled_impacts, 2) as u16;
+        if offset2 < doc_score.len() { doc_score[offset2] += impact2; }
+        
+        let offset3 = _mm256_extract_epi16(offsets, 3) as usize;
+        let impact3 = _mm256_extract_epi16(scaled_impacts, 3) as u16;
+        if offset3 < doc_score.len() { doc_score[offset3] += impact3; }
+        
+        let offset4 = _mm256_extract_epi16(offsets, 4) as usize;
+        let impact4 = _mm256_extract_epi16(scaled_impacts, 4) as u16;
+        if offset4 < doc_score.len() { doc_score[offset4] += impact4; }
+        
+        let offset5 = _mm256_extract_epi16(offsets, 5) as usize;
+        let impact5 = _mm256_extract_epi16(scaled_impacts, 5) as u16;
+        if offset5 < doc_score.len() { doc_score[offset5] += impact5; }
+        
+        let offset6 = _mm256_extract_epi16(offsets, 6) as usize;
+        let impact6 = _mm256_extract_epi16(scaled_impacts, 6) as u16;
+        if offset6 < doc_score.len() { doc_score[offset6] += impact6; }
+        
+        let offset7 = _mm256_extract_epi16(offsets, 7) as usize;
+        let impact7 = _mm256_extract_epi16(scaled_impacts, 7) as u16;
+        if offset7 < doc_score.len() { doc_score[offset7] += impact7; }
+        
+        inner_ptr = inner_ptr.add(8);
+    }
+    
+    // Handle remaining elements
+    while inner_ptr != end_inner_ptr {
+        doc_score[(*inner_ptr).0 as usize] += (value as u16) * ((*inner_ptr).1 as u16);
+        inner_ptr = inner_ptr.add(1);
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
+#[inline]
+unsafe fn block_score_simd_aarch64(
+    doc_score: &mut [u16],
+    mut inner_ptr: *const (u8, u8),
+    end_inner_ptr: *const (u8, u8),
+    value: u8,
+) {
+    let value_vec = vdupq_n_u16(value as u16);
+    
+    while inner_ptr.wrapping_offset(8) <= end_inner_ptr {
+        // Load 8 pairs of (offset, impact)
+        let data = vld1q_u8(inner_ptr as *const u8);
+        
+        // Extract offsets (first 8 bytes)
+        let offsets = vandq_u8(data, vdupq_n_u8(0xFF));
+        
+        // Extract impacts (second 8 bytes) - shift and mask
+        let impacts_shifted = vshrq_n_u8(data, 8);
+        let impacts = vandq_u8(impacts_shifted, vdupq_n_u8(0xFF));
+        
+        // Convert to u16 for multiplication
+        let impacts_u16 = vmovl_u8(impacts);
+        let scaled_impacts = vmulq_u16(impacts_u16, value_vec);
+        
+        // Process each element using unrolled loop
+        let offset0 = vgetq_lane_u8(offsets, 0) as usize;
+        let impact0 = vgetq_lane_u16(scaled_impacts, 0);
+        if offset0 < doc_score.len() { doc_score[offset0] += impact0; }
+        
+        let offset1 = vgetq_lane_u8(offsets, 1) as usize;
+        let impact1 = vgetq_lane_u16(scaled_impacts, 1);
+        if offset1 < doc_score.len() { doc_score[offset1] += impact1; }
+        
+        let offset2 = vgetq_lane_u8(offsets, 2) as usize;
+        let impact2 = vgetq_lane_u16(scaled_impacts, 2);
+        if offset2 < doc_score.len() { doc_score[offset2] += impact2; }
+        
+        let offset3 = vgetq_lane_u8(offsets, 3) as usize;
+        let impact3 = vgetq_lane_u16(scaled_impacts, 3);
+        if offset3 < doc_score.len() { doc_score[offset3] += impact3; }
+        
+        let offset4 = vgetq_lane_u8(offsets, 4) as usize;
+        let impact4 = vgetq_lane_u16(scaled_impacts, 4);
+        if offset4 < doc_score.len() { doc_score[offset4] += impact4; }
+        
+        let offset5 = vgetq_lane_u8(offsets, 5) as usize;
+        let impact5 = vgetq_lane_u16(scaled_impacts, 5);
+        if offset5 < doc_score.len() { doc_score[offset5] += impact5; }
+        
+        let offset6 = vgetq_lane_u8(offsets, 6) as usize;
+        let impact6 = vgetq_lane_u16(scaled_impacts, 6);
+        if offset6 < doc_score.len() { doc_score[offset6] += impact6; }
+        
+        let offset7 = vgetq_lane_u8(offsets, 7) as usize;
+        let impact7 = vgetq_lane_u16(scaled_impacts, 7);
+        if offset7 < doc_score.len() { doc_score[offset7] += impact7; }
+        
+        inner_ptr = inner_ptr.add(8);
+    }
+    
+    // Handle remaining elements
+    while inner_ptr != end_inner_ptr {
+        doc_score[(*inner_ptr).0 as usize] += (value as u16) * ((*inner_ptr).1 as u16);
+        inner_ptr = inner_ptr.add(1);
+    }
 }

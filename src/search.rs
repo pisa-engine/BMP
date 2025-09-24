@@ -64,7 +64,8 @@ pub fn b_search_verbose(
     };
 
     let mut search_elapsed = 0;
-    let mut buckets: Vec<Vec<u32>> = (0..=2usize.pow(16)).map(|_| Vec::new()).collect();
+    // Optimize bucket allocation - use smaller initial capacity
+    let mut buckets: Vec<Vec<u32>> = (0..=2usize.pow(16)).map(|_| Vec::with_capacity(4)).collect();
 
     for query in queries.iter_mut() {
         let total_terms = query.len();
