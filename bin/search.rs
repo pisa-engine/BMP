@@ -30,6 +30,9 @@ struct Args {
 }
 fn main() -> Result<()> {
     let args = Args::from_args();
+    if is_x86_feature_detected!("avx512bw") {
+        eprintln!("avx supported");
+    }
 
     // 1. Load the index
     eprintln!("Loading the index");

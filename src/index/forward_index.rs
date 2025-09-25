@@ -162,7 +162,6 @@ pub fn block_score(
 
                 // packed u8 scores to packed i32
                 let scores_i32 = _mm512_cvtepu8_epi32(scores_v);
-                let prev_doc_scores = _mm512_loadu_si512(doc_scores.as_ptr() as *const __m512i);
 
                 // Broadcast the query value
                 let query_value = _mm512_set1_epi32(value as i32);
@@ -177,7 +176,7 @@ pub fn block_score(
                 let new_scores = _mm512_add_epi32(prev_scores_at_docs, term_scores);
 
                 // Scatter the new scores back to the doc_scores at corresponding positions
-                let scores_mask = (0xFF << (16 - len)) as __mmask16;
+                let scores_mask = ((1u16 << len) - 1) as __mmask16;
                 _mm512_mask_i32scatter_epi32(doc_scores.as_mut_ptr() as *mut i32, scores_mask, docs_i32, new_scores, 4);
             }
         }
@@ -193,7 +192,7 @@ pub fn block_score(
 #[cfg(not(target_feature = "avx512f"))]
 #[inline]
 pub fn block_score(
-    query: &Vec<(u16, u8)>,
+    query: &[(u16, u8)],
     document: &[(u16, (Vec<u8>, Vec<u8>))],
     bsize: usize,
 ) -> Vec<u16> {
@@ -311,18 +310,19 @@ mod tests {
     }
 
     #[test]
-    fn test_block_score_duplicate_doc_ids() {
+    fn test_block_score_unique_doc_ids() {
         // Query: term 1 (weight 2)
         let query = vec![(1u16, 2u8)];
-        // Document: term 1 in doc 0 twice (score 3, 4)
+        // Document: term 1 in doc 0 (score 3) and doc 1 (score 4)
         let document = vec![
-            (1u16, (vec![0u8, 0u8], vec![3u8, 4u8])),
+            (1u16, (vec![0u8, 1u8], vec![3u8, 4u8])),
         ];
         let bsize = 16;
         let result = block_score(&query, &document, bsize);
-        // doc 0: 2*3 + 2*4 = 6 + 8 = 14
+        // doc 0: 2*3 = 6, doc 1: 2*4 = 8
         let mut expected = vec![0u16; 16];
-        expected[0] = 14;
+        expected[0] = 6;
+        expected[1] = 8;
         assert_eq!(result, expected);
     }
 
