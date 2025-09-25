@@ -146,6 +146,7 @@ pub fn block_score(
             }
 
             if (*term_ptr).0 == coordinate {
+                let doc_ids = &(*term_ptr).1.0;
                 let len = doc_ids.len();
                 
                 // Load doc_ids and scores as u8 vectors
