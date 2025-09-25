@@ -189,9 +189,8 @@ pub fn block_score(
         .collect()
 }
 
-#[cfg(not(all(target_feature = "avx512f", target_feature = "avx512bw")))]
 #[inline]
-pub fn block_score(
+pub fn block_score_scalar(
     query: &[(u16, u8)],
     document: &[(u16, (Vec<u8>, Vec<u8>))],
     bsize: usize,
@@ -224,6 +223,16 @@ pub fn block_score(
     }
 
     doc_score
+}
+
+#[cfg(not(all(target_feature = "avx512f", target_feature = "avx512bw")))]
+#[inline]
+pub fn block_score(
+    query: &[(u16, u8)],
+    document: &[(u16, (Vec<u8>, Vec<u8>))],
+    bsize: usize,
+) -> Vec<u16> {
+    block_score_scalar(query, document, bsize)
 }
 
 
