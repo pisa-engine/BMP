@@ -146,19 +146,14 @@ pub fn block_score(
             }
 
             if (*term_ptr).0 == coordinate {
-                let doc_ids = &(*term_ptr).1.0;
-                let scores = &(*term_ptr).1.1;
                 let len = doc_ids.len();
-
-                let docs_ptr = (*term_ptr).1.0.as_ptr();
-                let scores_ptr = (*term_ptr).1.1.as_ptr();
-
+                
                 // Load doc_ids and scores as u8 vectors
-                let docs = _mm_loadu_si128(docs_ptr as *const __m128i);
+                let docs = _mm_loadu_si128((*term_ptr).1.0.as_ptr() as *const __m128i);
                 let docs_i32 = _mm512_cvtepu8_epi32(docs);
 
                 // packed u8 scores in the same order as docs
-                let scores_v = _mm_loadu_si128(scores_ptr as *const __m128i);
+                let scores_v = _mm_loadu_si128((*term_ptr).1.1.as_ptr() as *const __m128i);
 
                 // packed u8 scores to packed i32
                 let scores_i32 = _mm512_cvtepu8_epi32(scores_v);
@@ -182,7 +177,6 @@ pub fn block_score(
         }
     }
 
-    // Convert i32 scores to u16, saturating at u16::MAX
     doc_scores
         .into_iter()
         .map(|x| x as u16)
