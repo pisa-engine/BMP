@@ -172,8 +172,8 @@ pub fn block_score(
                 let new_scores = _mm512_add_epi32(prev_scores_at_docs, term_scores);
 
                 // Scatter the new scores back to the doc_scores at corresponding positions
-                let scores_mask = ((1u16 << len) - 1) as __mmask16;
-                _mm512_mask_i32scatter_epi32(doc_scores.as_mut_ptr() as *mut i32, scores_mask, docs_i32, new_scores, 4);
+                // let scores_mask = ((1u16 << len) - 1) as __mmask16;
+                // _mm512_mask_i32scatter_epi32(doc_scores.as_mut_ptr() as *mut i32, scores_mask, docs_i32, new_scores, 4);
             }
         }
     }
