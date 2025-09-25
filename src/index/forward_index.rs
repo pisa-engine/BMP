@@ -120,7 +120,7 @@ pub fn fwd2bfwd(fwd: &ForwardIndex, block_size: usize) -> BlockForwardIndex {
     }
 }
 
-#[cfg(target_feature = "avx512f")]
+#[cfg(all(target_feature = "avx512f", target_feature = "avx512bw"))]
 #[inline]
 pub fn block_score(
     query: &[(u16, u8)],
@@ -154,11 +154,11 @@ pub fn block_score(
                 let scores_ptr = (*term_ptr).1.1.as_ptr();
 
                 // Load doc_ids and scores as u8 vectors
-                let docs = _mm_loadu_si128(doc_ids_arr.as_ptr() as *const __m128i);
+                let docs = _mm_loadu_si128(docs_ptr as *const __m128i);
                 let docs_i32 = _mm512_cvtepu8_epi32(docs);
 
                 // packed u8 scores in the same order as docs
-                let scores_v = _mm_loadu_si128(scores_arr.as_ptr() as *const __m128i);
+                let scores_v = _mm_loadu_si128(scores_ptr as *const __m128i);
 
                 // packed u8 scores to packed i32
                 let scores_i32 = _mm512_cvtepu8_epi32(scores_v);
@@ -178,7 +178,7 @@ pub fn block_score(
 
                 // Scatter the new scores back to the doc_scores at corresponding positions
                 let scores_mask = (0xFF << (16 - len)) as __mmask16;
-                _mm512_mask_i32scatter_epi32(doc_scores.as_mut_ptr() as *mut i8, scores_mask, docs_i32, new_scores, 4);
+                _mm512_mask_i32scatter_epi32(doc_scores.as_mut_ptr() as *mut i32, scores_mask, docs_i32, new_scores, 4);
             }
         }
     }
