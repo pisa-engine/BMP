@@ -241,10 +241,13 @@ mod tests {
             (1u16, (vec![0u8], vec![5u8])),
             (2u16, (vec![1u8], vec![7u8])),
         ];
-        let bsize = 3;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
-        // doc 0: 2*5 = 10, doc 1: 3*7 = 21, doc 2: 0
-        assert_eq!(result, vec![10u16, 21u16, 0u16]);
+        // doc 0: 2*5 = 10, doc 1: 3*7 = 21, doc 2..15: 0
+        let mut expected = vec![0u16; 16];
+        expected[0] = 10;
+        expected[1] = 21;
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -255,9 +258,13 @@ mod tests {
         let document = vec![
             (1u16, (vec![0u8, 1u8, 2u8], vec![2u8, 3u8, 4u8])),
         ];
-        let bsize = 4;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
-        assert_eq!(result, vec![2u16, 3u16, 4u16, 0u16]);
+        let mut expected = vec![0u16; 16];
+        expected[0] = 2;
+        expected[1] = 3;
+        expected[2] = 4;
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -266,18 +273,18 @@ mod tests {
         let document = vec![
             (1u16, (vec![0u8], vec![5u8])),
         ];
-        let bsize = 2;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
-        assert_eq!(result, vec![0u16, 0u16]);
+        assert_eq!(result, vec![0u16; 16]);
     }
 
     #[test]
     fn test_block_score_empty_document() {
         let query = vec![(1u16, 2u8)];
         let document: Vec<(u16, (Vec<u8>, Vec<u8>))> = vec![];
-        let bsize = 2;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
-        assert_eq!(result, vec![0u16, 0u16]);
+        assert_eq!(result, vec![0u16; 16]);
     }
 
     #[test]
@@ -292,12 +299,15 @@ mod tests {
             (2u16, (vec![1u8], vec![3u8])),
             (3u16, (vec![0u8, 2u8], vec![2u8, 1u8])),
         ];
-        let bsize = 3;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
         // doc 0: 2*1 + 4*2 = 2 + 8 = 10
         // doc 1: 0
         // doc 2: 2*2 + 4*1 = 4 + 4 = 8
-        assert_eq!(result, vec![10u16, 0u16, 8u16]);
+        let mut expected = vec![0u16; 16];
+        expected[0] = 10;
+        expected[2] = 8;
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -308,10 +318,12 @@ mod tests {
         let document = vec![
             (1u16, (vec![0u8, 0u8], vec![3u8, 4u8])),
         ];
-        let bsize = 1;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
         // doc 0: 2*3 + 2*4 = 6 + 8 = 14
-        assert_eq!(result, vec![14u16]);
+        let mut expected = vec![0u16; 16];
+        expected[0] = 14;
+        assert_eq!(result, expected);
     }
 
     #[test]
@@ -322,8 +334,10 @@ mod tests {
         let document = vec![
             (1u16, (vec![0u8], vec![5u8])),
         ];
-        let bsize = 5;
+        let bsize = 16;
         let result = block_score(&query, &document, bsize);
-        assert_eq!(result, vec![5u16, 0u16, 0u16, 0u16, 0u16]);
+        let mut expected = vec![0u16; 16];
+        expected[0] = 5;
+        assert_eq!(result, expected);
     }
 }

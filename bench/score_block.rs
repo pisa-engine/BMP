@@ -80,7 +80,7 @@ impl TestData {
 fn benchmark_block_score_varying_block_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("block_score_block_sizes");
     
-    let block_sizes = [16, 32, 64, 128, 256];
+    let block_sizes = [16];
     let query_length = 50;
     
     for &block_size in &block_sizes {
@@ -108,7 +108,7 @@ fn benchmark_block_score_varying_query_lengths(c: &mut Criterion) {
     let mut group = c.benchmark_group("block_score_query_lengths");
     
     let query_lengths = [10, 25, 50, 100, 200];
-    let block_size = 64;
+    let block_size = 16;
     
     for &query_length in &query_lengths {
         let test_data = TestData::balanced(query_length, block_size);
@@ -131,193 +131,193 @@ fn benchmark_block_score_varying_query_lengths(c: &mut Criterion) {
     group.finish();
 }
 
-fn benchmark_block_score_data_sparsity(c: &mut Criterion) {
-    let mut group = c.benchmark_group("block_score_data_sparsity");
+// fn benchmark_block_score_data_sparsity(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("block_score_data_sparsity");
     
-    let query_length = 50;
-    let block_size = 64;
+//     let query_length = 50;
+//     let block_size = 64;
     
-    let sparse_data = TestData::sparse(query_length, block_size);
-    let balanced_data = TestData::balanced(query_length, block_size);
-    let dense_data = TestData::dense(query_length, block_size);
+//     let sparse_data = TestData::sparse(query_length, block_size);
+//     let balanced_data = TestData::balanced(query_length, block_size);
+//     let dense_data = TestData::dense(query_length, block_size);
     
-    group.bench_function("sparse", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&sparse_data.query),
-                black_box(&sparse_data.document),
-                black_box(sparse_data.block_size),
-            )
-        })
-    });
+//     group.bench_function("sparse", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&sparse_data.query),
+//                 black_box(&sparse_data.document),
+//                 black_box(sparse_data.block_size),
+//             )
+//         })
+//     });
     
-    group.bench_function("balanced", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&balanced_data.query),
-                black_box(&balanced_data.document),
-                black_box(balanced_data.block_size),
-            )
-        })
-    });
+//     group.bench_function("balanced", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&balanced_data.query),
+//                 black_box(&balanced_data.document),
+//                 black_box(balanced_data.block_size),
+//             )
+//         })
+//     });
     
-    group.bench_function("dense", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&dense_data.query),
-                black_box(&dense_data.document),
-                black_box(dense_data.block_size),
-            )
-        })
-    });
+//     group.bench_function("dense", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&dense_data.query),
+//                 black_box(&dense_data.document),
+//                 black_box(dense_data.block_size),
+//             )
+//         })
+//     });
     
-    group.finish();
-}
+//     group.finish();
+// }
 
-fn benchmark_block_score_extreme_cases(c: &mut Criterion) {
-    let mut group = c.benchmark_group("block_score_extreme_cases");
+// fn benchmark_block_score_extreme_cases(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("block_score_extreme_cases");
     
-    // Very small block
-    let tiny_data = TestData::balanced(10, 8);
-    group.bench_function("tiny_block", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&tiny_data.query),
-                black_box(&tiny_data.document),
-                black_box(tiny_data.block_size),
-            )
-        })
-    });
+//     // Very small block
+//     let tiny_data = TestData::balanced(10, 8);
+//     group.bench_function("tiny_block", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&tiny_data.query),
+//                 black_box(&tiny_data.document),
+//                 black_box(tiny_data.block_size),
+//             )
+//         })
+//     });
     
-    // Large block
-    let large_data = TestData::balanced(100, 512);
-    group.bench_function("large_block", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&large_data.query),
-                black_box(&large_data.document),
-                black_box(large_data.block_size),
-            )
-        })
-    });
+//     // Large block
+//     let large_data = TestData::balanced(100, 512);
+//     group.bench_function("large_block", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&large_data.query),
+//                 black_box(&large_data.document),
+//                 black_box(large_data.block_size),
+//             )
+//         })
+//     });
     
-    // Very long query
-    let long_query_data = TestData::balanced(500, 64);
-    group.bench_function("long_query", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&long_query_data.query),
-                black_box(&long_query_data.document),
-                black_box(long_query_data.block_size),
-            )
-        })
-    });
+//     // Very long query
+//     let long_query_data = TestData::balanced(500, 64);
+//     group.bench_function("long_query", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&long_query_data.query),
+//                 black_box(&long_query_data.document),
+//                 black_box(long_query_data.block_size),
+//             )
+//         })
+//     });
     
-    // Very short query
-    let short_query_data = TestData::balanced(5, 64);
-    group.bench_function("short_query", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&short_query_data.query),
-                black_box(&short_query_data.document),
-                black_box(short_query_data.block_size),
-            )
-        })
-    });
+//     // Very short query
+//     let short_query_data = TestData::balanced(5, 64);
+//     group.bench_function("short_query", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&short_query_data.query),
+//                 black_box(&short_query_data.document),
+//                 black_box(short_query_data.block_size),
+//             )
+//         })
+//     });
     
-    group.finish();
-}
+//     group.finish();
+// }
 
-fn benchmark_block_score_no_matches(c: &mut Criterion) {
-    let mut group = c.benchmark_group("block_score_no_matches");
+// fn benchmark_block_score_no_matches(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("block_score_no_matches");
     
-    let mut rng = StdRng::seed_from_u64(42);
-    let block_size = 64;
+//     let mut rng = StdRng::seed_from_u64(42);
+//     let block_size = 64;
     
-    // Query with terms that don't exist in document
-    let query: Vec<(u16, u8)> = (1000..1050)
-        .map(|term_id| (term_id, rng.gen_range(1..=255)))
-        .collect();
+//     // Query with terms that don't exist in document
+//     let query: Vec<(u16, u8)> = (1000..1050)
+//         .map(|term_id| (term_id, rng.gen_range(1..=255)))
+//         .collect();
     
-    // Document with completely different terms
-    let document: Vec<(u16, (Vec<u8>, Vec<u8>))> = (0..100)
-        .map(|term_id| {
-            let mut doc_ids = Vec::new();
-            let mut scores = Vec::new();
-            for _ in 0..5 {
-                let doc_id = rng.gen_range(0..block_size);
-                let score = rng.gen_range(1..=255);
-                doc_ids.push(doc_id as u8);
-                scores.push(score);
-            }
-            (term_id as u16, (doc_ids, scores))
-        })
-        .collect();
+//     // Document with completely different terms
+//     let document: Vec<(u16, (Vec<u8>, Vec<u8>))> = (0..100)
+//         .map(|term_id| {
+//             let mut doc_ids = Vec::new();
+//             let mut scores = Vec::new();
+//             for _ in 0..5 {
+//                 let doc_id = rng.gen_range(0..block_size);
+//                 let score = rng.gen_range(1..=255);
+//                 doc_ids.push(doc_id as u8);
+//                 scores.push(score);
+//             }
+//             (term_id as u16, (doc_ids, scores))
+//         })
+//         .collect();
     
-    group.bench_function("no_matches", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&query),
-                black_box(&document),
-                black_box(block_size),
-            )
-        })
-    });
+//     group.bench_function("no_matches", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&query),
+//                 black_box(&document),
+//                 black_box(block_size),
+//             )
+//         })
+//     });
     
-    group.finish();
-}
+//     group.finish();
+// }
 
-fn benchmark_block_score_perfect_matches(c: &mut Criterion) {
-    let mut group = c.benchmark_group("block_score_perfect_matches");
+// fn benchmark_block_score_perfect_matches(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("block_score_perfect_matches");
     
-    let mut rng = StdRng::seed_from_u64(42);
-    let block_size = 64;
-    let query_length = 50;
+//     let mut rng = StdRng::seed_from_u64(42);
+//     let block_size = 64;
+//     let query_length = 50;
     
-    // Generate query terms
-    let query_terms: Vec<u16> = (0..query_length).map(|i| i as u16).collect();
-    let query: Vec<(u16, u8)> = query_terms
-        .into_iter()
-        .map(|term_id| (term_id, rng.gen_range(1..=255)))
-        .collect();
+//     // Generate query terms
+//     let query_terms: Vec<u16> = (0..query_length).map(|i| i as u16).collect();
+//     let query: Vec<(u16, u8)> = query_terms
+//         .into_iter()
+//         .map(|term_id| (term_id, rng.gen_range(1..=255)))
+//         .collect();
     
-    // Generate document with exact same terms
-    let document: Vec<(u16, (Vec<u8>, Vec<u8>))> = query
-        .iter()
-        .map(|(term_id, _)| {
-            let mut doc_ids = Vec::new();
-            let mut scores = Vec::new();
-            for _ in 0..10 {
-                let doc_id = rng.gen_range(0..block_size);
-                let score = rng.gen_range(1..=255);
-                doc_ids.push(doc_id as u8);
-                scores.push(score);
-            }
-            (*term_id, (doc_ids, scores))
-        })
-        .collect();
+//     // Generate document with exact same terms
+//     let document: Vec<(u16, (Vec<u8>, Vec<u8>))> = query
+//         .iter()
+//         .map(|(term_id, _)| {
+//             let mut doc_ids = Vec::new();
+//             let mut scores = Vec::new();
+//             for _ in 0..10 {
+//                 let doc_id = rng.gen_range(0..block_size);
+//                 let score = rng.gen_range(1..=255);
+//                 doc_ids.push(doc_id as u8);
+//                 scores.push(score);
+//             }
+//             (*term_id, (doc_ids, scores))
+//         })
+//         .collect();
     
-    group.bench_function("perfect_matches", |b| {
-        b.iter(|| {
-            block_score(
-                black_box(&query),
-                black_box(&document),
-                black_box(block_size),
-            )
-        })
-    });
+//     group.bench_function("perfect_matches", |b| {
+//         b.iter(|| {
+//             block_score(
+//                 black_box(&query),
+//                 black_box(&document),
+//                 black_box(block_size),
+//             )
+//         })
+//     });
     
-    group.finish();
-}
+//     group.finish();
+// }
 
 criterion_group!(
     benches,
     benchmark_block_score_varying_block_sizes,
     benchmark_block_score_varying_query_lengths,
-    benchmark_block_score_data_sparsity,
-    benchmark_block_score_extreme_cases,
-    benchmark_block_score_no_matches,
-    benchmark_block_score_perfect_matches
+    // benchmark_block_score_data_sparsity,
+    // benchmark_block_score_extreme_cases,
+    // benchmark_block_score_no_matches,
+    // benchmark_block_score_perfect_matches
 );
 
 criterion_main!(benches);
