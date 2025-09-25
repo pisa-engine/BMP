@@ -20,7 +20,7 @@ pub struct BlockDocument {
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct BlockForwardIndex {
-    pub data: Vec<Vec<(u16, Vec<(u8, u8)>)>>,
+    pub data: Vec<Vec<(u16, (Vec<u8>, Vec<u8>))>>,
     pub block_size: usize,
 }
 
@@ -87,27 +87,30 @@ pub fn fwd2bfwd(fwd: &ForwardIndex, block_size: usize) -> BlockForwardIndex {
             term_pairs.sort_by_key(|pair| pair.0);
 
             // Aggregate term-score pairs
-            let mut aggregated: Vec<(u16, Vec<(u8, u8)>)> = Vec::new();
+            let mut aggregated: Vec<(u16, (Vec<u8>, Vec<u8>))> = Vec::new();
             let mut current_term = None;
+            let mut current_doc_ids = Vec::new();
             let mut current_scores = Vec::new();
             for (term,doc_id, score) in term_pairs {
                 match current_term {
-                    Some(t) if t == term => current_scores.push((
-                        doc_id as u8,
-                        score as u8,
-                    )),
+                    Some(t) if t == term => {
+                        current_doc_ids.push(doc_id as u8);
+                        current_scores.push(score as u8);
+                    },
                     _ => {
                         if let Some(t) = current_term {
-                            aggregated.push((t as u16, current_scores.clone()));
+                            aggregated.push((t as u16, (current_doc_ids.clone(), current_scores.clone())));
+                            current_doc_ids.clear();
                             current_scores.clear();
                         }
                         current_term = Some(term);
-                        current_scores.push((doc_id as u8,score as u8));
+                        current_doc_ids.push(doc_id as u8);
+                        current_scores.push(score as u8);
                     }
                 }
             }
             if let Some(t) = current_term {
-                aggregated.push((t as u16, current_scores));
+                aggregated.push((t as u16, (current_doc_ids, current_scores)));
             }
             progress.inc(1);
 
@@ -117,10 +120,81 @@ pub fn fwd2bfwd(fwd: &ForwardIndex, block_size: usize) -> BlockForwardIndex {
     }
 }
 
+#[cfg(target_feature = "avx512f")]
+#[inline]
+pub fn block_score(
+    query: &[(u16, u8)],
+    document: &[(u16, (Vec<u8>, Vec<u8>))],
+    bsize: usize,
+) -> Vec<u16> {
+    use std::arch::x86_64::*;
+    assert!(bsize == 16);
+
+    let mut doc_scores = vec![0i32; bsize];
+
+    unsafe {
+        let mut term_ptr = document.as_ptr();
+        let end = term_ptr.add(document.len());
+        
+        for &(coordinate, value) in query {
+            while term_ptr != end && (*term_ptr).0 < coordinate {
+                term_ptr = term_ptr.add(1);
+            }
+
+            if term_ptr == end {
+                break;
+            }
+
+            if (*term_ptr).0 == coordinate {
+                let doc_ids = &(*term_ptr).1.0;
+                let scores = &(*term_ptr).1.1;
+                let len = doc_ids.len();
+
+                let docs_ptr = (*term_ptr).1.0.as_ptr();
+                let scores_ptr = (*term_ptr).1.1.as_ptr();
+
+                // Load doc_ids and scores as u8 vectors
+                let docs = _mm_loadu_si128(doc_ids_arr.as_ptr() as *const __m128i);
+                let docs_i32 = _mm512_cvtepu8_epi32(docs);
+
+                // packed u8 scores in the same order as docs
+                let scores_v = _mm_loadu_si128(scores_arr.as_ptr() as *const __m128i);
+
+                // packed u8 scores to packed i32
+                let scores_i32 = _mm512_cvtepu8_epi32(scores_v);
+                let prev_doc_scores = _mm512_loadu_si512(doc_scores.as_ptr() as *const __m512i);
+
+                // Broadcast the query value
+                let query_value = _mm512_set1_epi32(value as i32);
+
+                // Multiply the scores by the query value
+                let term_scores = _mm512_mullo_epi32(scores_i32, query_value);
+
+                // Gather previous doc_scores at doc_ids
+                let prev_scores_at_docs = _mm512_i32gather_epi32(docs_i32, doc_scores.as_ptr() as *const i32, 4);
+
+                // Add the term scores to the previous doc scores
+                let new_scores = _mm512_adds_epi32(prev_scores_at_docs, term_scores);
+
+                // Scatter the new scores back to the doc_scores at corresponding positions
+                let scores_mask = (0xFF << (16 - len)) as __mmask16;
+                _mm512_mask_i32scatter_epi32(doc_scores.as_mut_ptr() as *mut i8, scores_mask, docs_i32, new_scores, 4);
+            }
+        }
+    }
+
+    // Convert i32 scores to u16, saturating at u16::MAX
+    doc_scores
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
+}
+
+#[cfg(not(target_feature = "avx512f"))]
 #[inline]
 pub fn block_score(
     query: &Vec<(u16, u8)>,
-    document: &[(u16, Vec<(u8, u8)>)],
+    document: &[(u16, (Vec<u8>, Vec<u8>))],
     bsize: usize,
 ) -> Vec<u16> {
     let mut doc_score = vec![0; bsize];
@@ -136,11 +210,15 @@ pub fn block_score(
                 break;
             }
             if (*term_ptr).0 == coordinate {
-                let mut inner_ptr = (*term_ptr).1.as_ptr();
-                let end_inner_ptr = inner_ptr.wrapping_offset((*term_ptr).1.len() as isize);
-                while inner_ptr != end_inner_ptr {
-                    doc_score[(*inner_ptr).0 as usize] += (value as u16) * ((*inner_ptr).1 as u16);
-                    inner_ptr = inner_ptr.add(1);
+                let (doc_ids, scores) = &(*term_ptr).1;
+                let doc_ids_ptr = doc_ids.as_ptr();
+                let scores_ptr = scores.as_ptr();
+                let len = doc_ids.len();
+                
+                for i in 0..len {
+                    let doc_id = *doc_ids_ptr.add(i) as usize;
+                    let score = *scores_ptr.add(i) as u16;
+                    doc_score[doc_id] += (value as u16) * score;
                 }
             }
         }

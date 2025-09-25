@@ -25,3 +25,12 @@ rayon = "1.8.0"
 
 [build-dependencies]
 protobuf-codegen-pure = "2.22"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+rand = "0.8"
+
+[[bench]]
+name = "score_block"
+path = "bench/score_block.rs"
+harness = false

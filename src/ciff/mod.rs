@@ -224,7 +224,7 @@ fn convert_to_bmp(input: &Path, output: &Path, bsize: usize, compress_range: boo
     for (_, block) in b_forward_index.data.iter().enumerate() {
         tot += block.len();
         tot_avg_docs +=
-            block.iter().map(|(_, v)| v.len()).sum::<usize>() as f32 / block.len() as f32;
+            block.iter().map(|(_, v)| v.0.len()).sum::<usize>() as f32 / block.len() as f32;
     }
     eprintln!("avg terms per block: {}", tot / b_forward_index.data.len());
     eprintln!(
