@@ -189,7 +189,7 @@ pub fn block_score(
         .collect()
 }
 
-#[cfg(not(target_feature = "avx512f"))]
+#[cfg(not(all(target_feature = "avx512f", target_feature = "avx512bw")))]
 #[inline]
 pub fn block_score(
     query: &[(u16, u8)],
