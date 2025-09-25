@@ -134,7 +134,7 @@ pub fn block_score(
 
     unsafe {
         let mut term_ptr = document.as_ptr();
-        let end = term_ptr.add(document.len());
+        let end = term_ptr.wrapping_offset(document.len() as isize);
         
         for &(coordinate, value) in query {
             while term_ptr != end && (*term_ptr).0 < coordinate {
@@ -225,4 +225,105 @@ pub fn block_score(
     }
 
     doc_score
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_block_score_basic() {
+        // Query: term 1 with weight 2, term 2 with weight 3
+        let query = vec![(1u16, 2u8), (2u16, 3u8)];
+        // Document: term 1 appears in doc 0 (score 5), term 2 in doc 1 (score 7)
+        let document = vec![
+            (1u16, (vec![0u8], vec![5u8])),
+            (2u16, (vec![1u8], vec![7u8])),
+        ];
+        let bsize = 3;
+        let result = block_score(&query, &document, bsize);
+        // doc 0: 2*5 = 10, doc 1: 3*7 = 21, doc 2: 0
+        assert_eq!(result, vec![10u16, 21u16, 0u16]);
+    }
+
+    #[test]
+    fn test_block_score_multiple_postings() {
+        // Query: term 1 with weight 1
+        let query = vec![(1u16, 1u8)];
+        // Document: term 1 appears in doc 0 (score 2), doc 1 (score 3), doc 2 (score 4)
+        let document = vec![
+            (1u16, (vec![0u8, 1u8, 2u8], vec![2u8, 3u8, 4u8])),
+        ];
+        let bsize = 4;
+        let result = block_score(&query, &document, bsize);
+        assert_eq!(result, vec![2u16, 3u16, 4u16, 0u16]);
+    }
+
+    #[test]
+    fn test_block_score_empty_query() {
+        let query = vec![];
+        let document = vec![
+            (1u16, (vec![0u8], vec![5u8])),
+        ];
+        let bsize = 2;
+        let result = block_score(&query, &document, bsize);
+        assert_eq!(result, vec![0u16, 0u16]);
+    }
+
+    #[test]
+    fn test_block_score_empty_document() {
+        let query = vec![(1u16, 2u8)];
+        let document: Vec<(u16, (Vec<u8>, Vec<u8>))> = vec![];
+        let bsize = 2;
+        let result = block_score(&query, &document, bsize);
+        assert_eq!(result, vec![0u16, 0u16]);
+    }
+
+    #[test]
+    fn test_block_score_multiple_terms_and_docs() {
+        // Query: term 1 (weight 2), term 3 (weight 4)
+        let query = vec![(1u16, 2u8), (3u16, 4u8)];
+        // Document: term 1 in doc 0 (score 1), doc 2 (score 2)
+        //           term 2 in doc 1 (score 3)
+        //           term 3 in doc 0 (score 2), doc 2 (score 1)
+        let document = vec![
+            (1u16, (vec![0u8, 2u8], vec![1u8, 2u8])),
+            (2u16, (vec![1u8], vec![3u8])),
+            (3u16, (vec![0u8, 2u8], vec![2u8, 1u8])),
+        ];
+        let bsize = 3;
+        let result = block_score(&query, &document, bsize);
+        // doc 0: 2*1 + 4*2 = 2 + 8 = 10
+        // doc 1: 0
+        // doc 2: 2*2 + 4*1 = 4 + 4 = 8
+        assert_eq!(result, vec![10u16, 0u16, 8u16]);
+    }
+
+    #[test]
+    fn test_block_score_duplicate_doc_ids() {
+        // Query: term 1 (weight 2)
+        let query = vec![(1u16, 2u8)];
+        // Document: term 1 in doc 0 twice (score 3, 4)
+        let document = vec![
+            (1u16, (vec![0u8, 0u8], vec![3u8, 4u8])),
+        ];
+        let bsize = 1;
+        let result = block_score(&query, &document, bsize);
+        // doc 0: 2*3 + 2*4 = 6 + 8 = 14
+        assert_eq!(result, vec![14u16]);
+    }
+
+    #[test]
+    fn test_block_score_bsize_larger_than_docs() {
+        // Query: term 1 (weight 1)
+        let query = vec![(1u16, 1u8)];
+        // Document: term 1 in doc 0 (score 5)
+        let document = vec![
+            (1u16, (vec![0u8], vec![5u8])),
+        ];
+        let bsize = 5;
+        let result = block_score(&query, &document, bsize);
+        assert_eq!(result, vec![5u16, 0u16, 0u16, 0u16, 0u16]);
+    }
 }
