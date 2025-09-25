@@ -174,7 +174,7 @@ pub fn block_score(
                 let prev_scores_at_docs = _mm512_i32gather_epi32(docs_i32, doc_scores.as_ptr() as *const i32, 4);
 
                 // Add the term scores to the previous doc scores
-                let new_scores = _mm512_adds_epi32(prev_scores_at_docs, term_scores);
+                let new_scores = _mm512_add_epi32(prev_scores_at_docs, term_scores);
 
                 // Scatter the new scores back to the doc_scores at corresponding positions
                 let scores_mask = (0xFF << (16 - len)) as __mmask16;
