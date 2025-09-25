@@ -166,10 +166,10 @@ pub fn block_score(
                 let term_scores = _mm512_mullo_epi32(scores_i32, query_value);
 
                 // Gather previous doc_scores at doc_ids
-                let prev_scores_at_docs = _mm512_i32gather_epi32(docs_i32, doc_scores.as_ptr() as *const i32, 4);
+                // let prev_scores_at_docs = _mm512_i32gather_epi32(docs_i32, doc_scores.as_ptr() as *const i32, 4);
 
                 // Add the term scores to the previous doc scores
-                let new_scores = _mm512_add_epi32(prev_scores_at_docs, term_scores);
+                // let new_scores = _mm512_add_epi32(prev_scores_at_docs, term_scores);
 
                 // Scatter the new scores back to the doc_scores at corresponding positions
                 // let scores_mask = ((1u16 << len) - 1) as __mmask16;
