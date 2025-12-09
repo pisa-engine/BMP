@@ -4,6 +4,7 @@ use std::fs::{read_to_string, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
+
 fn main() {
     let out_dir_env = env::var_os("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir_env);
