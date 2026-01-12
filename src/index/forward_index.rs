@@ -30,6 +30,7 @@ pub struct ForwardIndex {
 }
 pub struct ForwardIndexBuilder {
     forward_index: ForwardIndex,
+    fwd_pruning_ratio: f32,
 }
 // Implement IntoIterator for a reference to PostingList.
 impl<'a> IntoIterator for &'a ForwardIndex {
@@ -42,16 +43,27 @@ impl<'a> IntoIterator for &'a ForwardIndex {
 }
 
 impl ForwardIndexBuilder {
-    pub fn new(num_documents: usize) -> ForwardIndexBuilder {
+    pub fn new(num_documents: usize, fwd_pruning_ratio: f32) -> ForwardIndexBuilder {
         Self {
             forward_index: ForwardIndex {
                 data: vec![Vec::new(); num_documents],
             },
+            fwd_pruning_ratio,
         }
     }
     pub fn insert_posting_list(&mut self, term_id: u32, posting_list: &Vec<(u32, u32)>) {
+        let mut sorted_scores: Vec<u32> = posting_list.iter().map(|&(_, score)| score).collect();
+        // Sort in decreasing order (largest to smallest)
+        sorted_scores.sort_by(|a, b| b.cmp(&a));
+
+        let pruning_threshold = sorted_scores
+            .get(((1.0 - self.fwd_pruning_ratio) * sorted_scores.len() as f32) as usize)
+            .copied()
+            .unwrap_or(0) as u32;
         for (doc_id, score) in posting_list {
-            self.forward_index.data[*doc_id as usize].push((term_id as u32, *score));
+            if *score >= pruning_threshold {
+                self.forward_index.data[*doc_id as usize].push((term_id as u32, *score));
+            }
         }
     }
     pub fn insert_document(&mut self, vector: Vec<(u32, u32)>) {

@@ -30,6 +30,19 @@ The CIFF files and the queries required by BMP to generate an index and perform 
 ```
 ./target/release/ciff2bmp -b 8 -c ./bp-msmarco-passage-unicoil-quantized.ciff -o bp-msmarco-passage-unicoil-quantized.bmp --compress-range
 ```
+
+##### Pruning Parameters
+
+BMP supports two types of pruning to reduce index size and improve search performance:
+
+- **`--range-pruning-ratio <RATIO>`**: Controls the pruning of range max scores in the inverted index. A value of 0.1 means the bottom 10% of range scores will be pruned. Default: 0.0 (no pruning). Higher values result in smaller indexes but may reduce recall.
+
+- **`--fwd-pruning-ratio <RATIO>`**: Controls the pruning of forward index entries. A value of 0.2 means the bottom 20% of forward index scores will be pruned. Default: 0.0 (no pruning). This reduces memory usage for the forward index at the cost of potential recall loss.
+
+Example with pruning:
+```
+./target/release/ciff2bmp -b 8 -c ./bp-msmarco-passage-unicoil-quantized.ciff -o bp-msmarco-passage-unicoil-quantized.bmp --compress-range --range-pruning-ratio 0.1 --fwd-pruning-ratio 0.15
+```
 #### Search
 ```
 ./target/release/search --index bp-msmarco-passage-unicoil-quantized.bmp --k 1000 --queries dev.pisa > bp-msmarco-passage-unicoil-quantized.dev.trec

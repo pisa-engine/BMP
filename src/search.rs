@@ -14,7 +14,6 @@ use std::arch::aarch64::{_prefetch, _PREFETCH_LOCALITY0, _PREFETCH_READ};
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 
-
 #[cfg(target_arch = "x86_64")]
 fn prefetch_block(forward_index: &BlockForwardIndex, block: u32) {
     unsafe {
@@ -35,7 +34,6 @@ fn prefetch_block(forward_index: &BlockForwardIndex, block: u32) {
         );
     }
 }
-
 
 pub fn b_search(
     queries: Vec<Vec<PostingListIterator>>,
@@ -63,8 +61,8 @@ pub fn b_search_verbose(
         None
     };
 
-    let mut search_elapsed = 0;
     let mut buckets: Vec<Vec<u32>> = (0..=2usize.pow(16)).map(|_| Vec::new()).collect();
+    let mut search_elapsed = 0;
 
     for query in queries.iter_mut() {
         let total_terms = query.len();
@@ -98,6 +96,7 @@ pub fn b_search_verbose(
 
         let start_search: Instant = Instant::now();
         let run_compressed = query_ranges_compressed.len() > 0;
+
         let upper_bounds = match run_compressed {
             true => live_block::compute_upper_bounds(
                 &query_ranges_compressed,
@@ -129,10 +128,12 @@ pub fn b_search_verbose(
                 });
 
         let (mut current_ub, mut current_block) = ub_iter.next().unwrap();
+
         prefetch_block(forward_index, *current_block);
 
         for (next_ub, next_block) in ub_iter {
             prefetch_block(forward_index, *next_block);
+
             let offset = *current_block as usize * forward_index.block_size;
 
             let res = block_score(
@@ -151,6 +152,7 @@ pub fn b_search_verbose(
             current_block = next_block;
             current_ub = next_ub;
         }
+
         search_elapsed += start_search.elapsed().as_micros();
         results.push(topk.clone());
         if let Some(progress_bar) = &progress {
@@ -163,7 +165,7 @@ pub fn b_search_verbose(
 
     if verbose {
         eprintln!(
-            "search_elapsed = {}",
+            "search_elapsed = {} us",
             search_elapsed / results.len() as u128
         );
     }

@@ -69,6 +69,8 @@ pub struct CiffToBmp {
     output: Option<PathBuf>,
     bsize: Option<usize>,
     compress_range: bool,
+    range_pruning_ratio: f32,
+    fwd_pruning_ratio: f32,
 }
 
 impl CiffToBmp {
@@ -92,6 +94,14 @@ impl CiffToBmp {
         self.compress_range = compress_range;
         self
     }
+    pub fn range_pruning_ratio(&mut self, range_pruning_ratio: f32) -> &mut Self {
+        self.range_pruning_ratio = range_pruning_ratio;
+        self
+    }
+    pub fn fwd_pruning_ratio(&mut self, fwd_pruning_ratio: f32) -> &mut Self {
+        self.fwd_pruning_ratio = fwd_pruning_ratio;
+        self
+    }
     /// Builds a BMP index using the previously defined parameters.
     ///
     /// # Errors
@@ -110,11 +120,25 @@ impl CiffToBmp {
             .as_ref()
             .ok_or_else(|| anyhow!("input path undefined"))?;
         let bsize = self.bsize.ok_or_else(|| anyhow!("bsize undefined"))?;
-        convert_to_bmp(input, output, bsize, self.compress_range)
+        convert_to_bmp(
+            input,
+            output,
+            bsize,
+            self.compress_range,
+            self.range_pruning_ratio,
+            self.fwd_pruning_ratio,
+        )
     }
 }
 
-fn convert_to_bmp(input: &Path, output: &Path, bsize: usize, compress_range: bool) -> Result<()> {
+fn convert_to_bmp(
+    input: &Path,
+    output: &Path,
+    bsize: usize,
+    compress_range: bool,
+    range_pruning_ratio: f32,
+    fwd_pruning_ratio: f32,
+) -> Result<()> {
     println!("{:?}", output);
     let mut ciff_reader =
         File::open(input).with_context(|| format!("Unable to open {}", input.display()))?;
@@ -126,7 +150,7 @@ fn convert_to_bmp(input: &Path, output: &Path, bsize: usize, compress_range: boo
         let header: Header = Header::from_stream(&mut input)?;
         println!("{}", header);
 
-        builder = IndexBuilder::new(header.num_documents as usize, bsize);
+        builder = IndexBuilder::new(header.num_documents as usize, bsize, range_pruning_ratio);
 
         eprintln!("Processing postings");
         let progress = ProgressBar::new(u64::try_from(header.num_postings_lists)?);
@@ -189,7 +213,8 @@ fn convert_to_bmp(input: &Path, output: &Path, bsize: usize, compress_range: boo
     progress.set_style(pb_style());
     progress.set_draw_delta((header.num_postings_lists / 100) as u64);
 
-    let mut fwd_builder = ForwardIndexBuilder::new(header.num_documents as usize);
+    let mut fwd_builder =
+        ForwardIndexBuilder::new(header.num_documents as usize, fwd_pruning_ratio);
 
     for term_id in 0..header.num_postings_lists {
         let list = input.read_message::<PostingsList>()?;
