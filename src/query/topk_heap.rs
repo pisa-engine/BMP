@@ -66,7 +66,7 @@ impl<S: Default + Copy + PartialOrd> TopKHeap<S> {
 
     /// Determines if a given score would qualify for entry into the top-k heap.
     pub fn would_enter(&self, score: S) -> bool {
-        score > self.threshold
+        self.heap.len() < self.k || score > self.threshold
     }
 
     /// Inserts a document with its score into the top-k heap.
